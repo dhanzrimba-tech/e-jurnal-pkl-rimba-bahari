@@ -1,0 +1,16 @@
+{
+  "name": "e-jurnal-pkl-rimba-bahari-online",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.55.0"
+  },
+  "devDependencies": {
+    "vercel": "^46.0.0"
+  }
+}
