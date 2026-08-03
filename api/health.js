@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   try {
     const { admin } = clients();
-    const [profileProbe, journalProbe, inviteProbe, bucketProbe, deletionProbe, accountDeletionProbe] = await Promise.all([
+    const [profileProbe, journalProbe, inviteProbe, bucketProbe, deletionProbe, auditProbe] = await Promise.all([
       admin.from('profiles').select('registration_status').limit(1),
       admin.from('daily_journals').select('photo_paths').limit(1),
       admin.from('student_registration_invites').select('id').limit(1),
@@ -26,22 +26,25 @@ export default async function handler(req, res) {
       admin.from('account_deletion_requests').select('id').limit(1),
     ]);
 
-    const features = {
+    const requiredFeatures = {
       registration_columns: !profileProbe.error,
       journal_photo_column: !journalProbe.error,
       registration_table: !inviteProbe.error,
       photo_bucket: !bucketProbe.error,
       approved_journal_deletion: !deletionProbe.error,
-      account_deletion_approval: !accountDeletionProbe.error,
     };
-    const ready = Object.values(features).every(Boolean);
+    const ready = Object.values(requiredFeatures).every(Boolean);
 
     return sendJson(res, ready ? 200 : 503, {
       ok: ready,
       service: 'e-jurnal-api',
       configuration: 'ready',
       database_upgrade: ready ? 'ready' : 'incomplete',
-      features,
+      features: {
+        ...requiredFeatures,
+        direct_account_deletion: true,
+        account_deletion_audit: !auditProbe.error,
+      },
     });
   } catch (error) {
     console.error('health:', error);

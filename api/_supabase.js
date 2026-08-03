@@ -166,8 +166,8 @@ export function publicError(error) {
   if (normalized.includes('invalid email')) return 'Format email tidak valid.';
   if (normalized.includes('password')) return 'Password tidak memenuhi kebijakan keamanan Supabase.';
   if (normalized.includes('rate limit')) return 'Terlalu banyak permintaan. Coba lagi beberapa saat.';
-  if (normalized.includes('student_registration_invites') || normalized.includes('registration_status') || normalized.includes('photo_paths') || normalized.includes('journal_deletion_requests') || normalized.includes('approve_journal_deletion_request') || normalized.includes('account_deletion_requests')) {
-    return 'Upgrade database belum lengkap. Jalankan SQL upgrade yang sesuai, termasuk enable-account-deletion-approval.sql, melalui SQL Editor Supabase.';
+  if (normalized.includes('student_registration_invites') || normalized.includes('registration_status') || normalized.includes('photo_paths') || normalized.includes('journal_deletion_requests') || normalized.includes('approve_journal_deletion_request')) {
+    return 'Upgrade database belum lengkap. Jalankan SQL upgrade fitur yang sesuai melalui SQL Editor Supabase.';
   }
   if (normalized.includes('bucket not found') || normalized.includes('journal-photos')) {
     return 'Penyimpanan foto belum siap. Jalankan database/upgrade-photo-registration.sql melalui SQL Editor Supabase.';
