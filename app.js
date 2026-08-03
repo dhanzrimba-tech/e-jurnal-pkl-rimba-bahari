@@ -83,9 +83,26 @@ const menus = {
   ],
 };
 
+function readableMessage(value, fallback = 'Terjadi kesalahan. Silakan coba kembali.') {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (value instanceof Error) return readableMessage(value.message, fallback);
+  if (value && typeof value === 'object') {
+    const candidates = [value.message, value.error_description, value.details, value.hint, value.error];
+    for (const candidate of candidates) {
+      const text = readableMessage(candidate, '');
+      if (text) return text;
+    }
+    try {
+      const serialized = JSON.stringify(value);
+      if (serialized && serialized !== '{}') return serialized;
+    } catch {}
+  }
+  return fallback;
+}
+
 function toast(message, duration = 3200) {
   const element = $('#toast');
-  element.textContent = message;
+  element.textContent = readableMessage(message);
   element.classList.add('show');
   setTimeout(() => element.classList.remove('show'), duration);
 }
@@ -1364,6 +1381,9 @@ async function requestJson(url, body, { timeout, token = null }) {
     if (text) {
       try { result = JSON.parse(text); }
       catch { result = { error: `Respons server tidak valid (${response.status}).` }; }
+    }
+    if (result && typeof result === 'object' && result.error) {
+      result.error = readableMessage(result.error, `Permintaan gagal (${response.status})`);
     }
     if (!response.ok && !result.error) result.error = `Permintaan gagal (${response.status})`;
     return result;

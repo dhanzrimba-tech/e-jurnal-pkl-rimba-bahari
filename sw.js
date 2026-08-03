@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v11-account-delete-approval';
+const CACHE = 'ejurnal-rbs-v12-journal-delete-error-hotfix';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=11',
-  '/app.js?v=11',
-  '/config.js?v=11',
+  '/styles.css?v=12',
+  '/app.js?v=12',
+  '/config.js?v=12',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'
