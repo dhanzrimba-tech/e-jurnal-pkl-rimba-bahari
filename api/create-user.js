@@ -55,6 +55,9 @@ export default async function handler(req, res) {
       email: input.email,
       role: input.role,
       is_active: true,
+      registration_status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: access.actor.id,
     };
     if (input.phone) profile.phone = input.phone;
 
