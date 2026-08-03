@@ -649,3 +649,21 @@ tbody tr:last-child td { border-bottom: 0; }
   .forgot-password-row { align-items: flex-start; }
   .password-help-card { padding: 26px 20px 22px; }
 }
+
+/* Persetujuan penghapusan akun pengguna */
+.account-approval-panel { margin-bottom: 22px; }
+.account-approval-panel .panel-title { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding-bottom:16px; }
+.account-approval-panel .panel-title h3 { margin:4px 0 5px; }
+.account-approval-panel .panel-title p { margin:0; color:var(--muted); }
+.request-count { min-width:42px; height:42px; display:grid; place-items:center; border-radius:14px; background:#fff1ef; color:var(--danger); font-weight:900; font-size:18px; }
+.reason-preview { display:block; max-width:380px; color:#67400e; line-height:1.5; white-space:pre-wrap; }
+.protected-account { display:inline-flex; align-items:center; padding:7px 10px; border-radius:10px; background:#eef2f0; color:#667085; font-size:12px; font-weight:800; }
+.section-subtitle { margin:5px 0 0; color:var(--muted); font-size:13px; }
+.account-delete-history { margin-top:20px; }
+.account-delete-history .optional-invite-body { padding-top:16px; }
+.account-delete-summary { margin-bottom:16px; box-shadow:none; background:#f8fbfa; }
+.account-delete-summary p { margin:7px 0; }
+@media (max-width:760px) {
+  .account-approval-panel .panel-title { flex-direction:column; }
+  .reason-preview { max-width:none; }
+}
