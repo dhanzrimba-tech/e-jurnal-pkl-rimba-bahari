@@ -78,9 +78,9 @@ export function clients() {
 
 export async function requireActiveUser(req, allowedRoles = []) {
   const token = bearerToken(req);
-  const { anon, admin } = clients();
+  const { admin } = clients();
 
-  const { data: authData, error: authError } = await anon.auth.getUser(token);
+  const { data: authData, error: authError } = await admin.auth.getUser(token);
   if (authError || !authData?.user) {
     const error = new Error('Sesi sudah tidak valid. Silakan masuk kembali.');
     error.statusCode = 401;
@@ -114,9 +114,9 @@ export async function requireActiveUser(req, allowedRoles = []) {
 
 export async function requireActiveAdmin(req) {
   const token = bearerToken(req);
-  const { anon, admin } = clients();
+  const { admin } = clients();
 
-  const { data: authData, error: authError } = await anon.auth.getUser(token);
+  const { data: authData, error: authError } = await admin.auth.getUser(token);
   if (authError || !authData?.user) {
     const error = new Error('Sesi sudah tidak valid. Silakan masuk kembali.');
     error.statusCode = 401;
