@@ -7,6 +7,31 @@ const sb = (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY)
 const PHOTO_BUCKET = 'journal-photos';
 const MAX_JOURNAL_PHOTOS = 3;
 const MAX_INPUT_PHOTO_SIZE = 10 * 1024 * 1024;
+const REMOVABLE_JOURNAL_STATUSES = ['draft', 'revision', 'rejected'];
+
+const pageDescriptions = {
+  dashboard: 'Ringkasan aktivitas dan perkembangan PKL',
+  users: 'Kelola akun dan hak akses pengguna',
+  registrations: 'Pendaftaran mandiri dan verifikasi siswa',
+  students: 'Data penempatan dan pembimbing siswa',
+  journals: 'Monitoring, dokumentasi, dan validasi jurnal',
+  'my-journal': 'Catat kegiatan, pembelajaran, dan dokumentasi PKL',
+  attendance: 'Rekap kehadiran selama pelaksanaan PKL',
+  'my-attendance': 'Catat kehadiran dan waktu kegiatan Anda',
+  reports: 'Rekap data dan laporan kegiatan PKL',
+};
+
+const navIcons = {
+  dashboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></svg>',
+  users: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"/></svg>',
+  registrations: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm-7 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm6 11H6v-.8c0-2 4-3.1 6-3.1s6 1.1 6 3.1v.8Z"/></svg>',
+  students: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8l10-5Zm6 8.5V16l-6 3-6-3v-4.5l6 3 6-3ZM20 10v7h2v-8l-2 1Z"/></svg>',
+  journals: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2Zm8 1.5V8h4.5L14 3.5ZM8 12v2h8v-2H8Zm0 4v2h8v-2H8Z"/></svg>',
+  'my-journal': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2Zm8 1.5V8h4.5L14 3.5ZM8 12v2h8v-2H8Zm0 4v2h8v-2H8Z"/></svg>',
+  attendance: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2Zm0 16H5V9h14v11Zm-7-2 5-5-1.41-1.41L12 15.17l-1.59-1.58L9 15l3 3Z"/></svg>',
+  'my-attendance': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2Zm0 16H5V9h14v11Zm-7-2 5-5-1.41-1.41L12 15.17l-1.59-1.58L9 15l3 3Z"/></svg>',
+  reports: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16v2H4v-2Zm2-2V9h3v8H6Zm5 0V3h3v14h-3Zm5 0v-6h3v6h-3Z"/></svg>',
+};
 const state = {
   session: null,
   profile: null,
@@ -14,6 +39,8 @@ const state = {
   students: [],
   journals: [],
   attendance: [],
+  deletionRequests: [],
+  deletionFeatureReady: true,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -89,14 +116,18 @@ function requireConfig() {
 
 async function init() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
-  if (!requireConfig()) return;
 
   const registrationToken = new URLSearchParams(location.search).get('register');
+  if (registrationToken === 'student' || registrationToken === 'public') {
+    await showPublicStudentRegistrationView();
+    return;
+  }
   if (registrationToken) {
     await showRegistrationView(registrationToken);
     return;
   }
 
+  if (!requireConfig()) return;
   const { data: { session } } = await sb.auth.getSession();
   if (session) await enterApp(session);
   sb.auth.onAuthStateChange(async (_event, newSession) => {
@@ -147,8 +178,14 @@ async function enterApp(session) {
   state.profile = data;
   $('#loginView').classList.add('hidden');
   $('#registerView').classList.add('hidden');
+  $('#publicRegisterView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
   $('#userInfo').textContent = `${data.full_name} • ${roles[data.role] || data.role}`;
+  const initials = data.full_name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  if ($('#sidebarUserInitials')) $('#sidebarUserInitials').textContent = initials || 'U';
+  if ($('#sidebarUserName')) $('#sidebarUserName').textContent = data.full_name;
+  if ($('#sidebarUserRole')) $('#sidebarUserRole').textContent = roles[data.role] || data.role;
+  if ($('#topbarDate')) $('#topbarDate').textContent = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
   renderNav();
   await navigate('dashboard');
 }
@@ -158,13 +195,14 @@ function showLogin() {
   state.profile = null;
   $('#appView').classList.add('hidden');
   $('#registerView').classList.add('hidden');
+  $('#publicRegisterView').classList.add('hidden');
   $('#loginView').classList.remove('hidden');
 }
 
 function renderNav() {
   const items = menus[state.profile.role] || menus.student;
   $('#navMenu').innerHTML = items.map(([id, label]) =>
-    `<button class="nav-btn ${state.page === id ? 'active' : ''}" data-page="${id}">${label}</button>`).join('');
+    `<button class="nav-btn ${state.page === id ? 'active' : ''}" data-page="${id}"><span class="nav-icon">${navIcons[id] || ''}</span><span>${label}</span></button>`).join('');
   document.querySelectorAll('.nav-btn').forEach((button) => {
     button.onclick = () => navigate(button.dataset.page);
   });
@@ -176,7 +214,8 @@ async function navigate(page) {
   renderNav();
   const label = (menus[state.profile.role] || []).find((item) => item[0] === page)?.[1] || 'Dashboard';
   $('#pageTitle').textContent = label;
-  $('#content').innerHTML = '<div class="card">Memuat data...</div>';
+  if ($('#pageEyebrow')) $('#pageEyebrow').textContent = pageDescriptions[page] || 'Ruang kerja E-Jurnal PKL';
+  $('#content').innerHTML = '<div class="loading-card"><span class="loading-spinner"></span><div><strong>Memuat data</strong><small>Menyiapkan halaman Anda...</small></div></div>';
   try {
     if (page === 'dashboard') await renderDashboard();
     else if (page === 'users') await renderUsers();
@@ -200,18 +239,47 @@ async function renderDashboard() {
     attendanceQuery = attendanceQuery.eq('student_id', state.profile.id);
   }
   const [journals, attendance] = await Promise.all([journalQuery, attendanceQuery]);
+  if (journals.error) throw journals.error;
+  if (attendance.error) throw attendance.error;
   const rows = journals.data || [];
+  const total = journals.count ?? rows.length;
   const approved = rows.filter((item) => item.status === 'approved').length;
   const pending = rows.filter((item) => item.status === 'submitted').length;
+  const revision = rows.filter((item) => item.status === 'revision').length;
   const progress = Math.min(100, Math.round((approved / 40) * 100));
-  $('#content').innerHTML = `<div class="cards">
-    <div class="card stat"><strong>${journals.count || 0}</strong><span>Total jurnal</span></div>
-    <div class="card stat"><strong>${approved}</strong><span>Jurnal disetujui</span></div>
-    <div class="card stat"><strong>${pending}</strong><span>Menunggu validasi</span></div>
-    <div class="card stat"><strong>${attendance.count || 0}</strong><span>Data presensi</span></div>
-  </div>
-  <div class="card mt-16"><h3>Progres PKL 40 Hari</h3><div class="progress"><span style="width:${progress}%"></span></div><p>${progress}% jurnal telah disetujui.</p></div>
-  <div class="card mt-16"><h3>Selamat datang, ${esc(state.profile.full_name)}</h3><p>Aplikasi menyimpan data secara daring. Foto jurnal dapat diambil langsung dari kamera HP.</p></div>`;
+  const firstName = esc((state.profile.full_name || 'Pengguna').split(/\s+/)[0]);
+  const roleCopy = {
+    admin: ['Pusat Kendali Administrasi', 'Kelola pengguna, pendaftaran, jurnal, dan laporan PKL dalam satu ruang kerja.'],
+    student: ['Ruang Belajar Lapangan', 'Dokumentasikan aktivitas, keterampilan, dan pengalaman PKL Anda setiap hari.'],
+    teacher: ['Monitoring Pembelajaran PKL', 'Pantau perkembangan siswa dan berikan umpan balik yang membangun.'],
+    field_supervisor: ['Validasi Kegiatan Lapangan', 'Pastikan kegiatan dan dokumentasi siswa sesuai kondisi di lapangan.'],
+  }[role] || ['E-Jurnal PKL', 'Kelola kegiatan PKL secara tertib, transparan, dan terdokumentasi.'];
+  const quickAction = role === 'student'
+    ? '<button class="btn hero-primary" id="quickJournal">＋ Tulis Jurnal Hari Ini</button><button class="btn hero-secondary" id="quickAttendance">✓ Isi Presensi</button>'
+    : role === 'admin'
+      ? '<button class="btn hero-primary" id="quickRegistration">Buka Pendaftaran Siswa</button><button class="btn hero-secondary" id="quickUsers">Kelola Pengguna</button>'
+      : '<button class="btn hero-primary" id="quickMonitoring">Buka Monitoring Jurnal</button>';
+
+  $('#content').innerHTML = `<section class="welcome-hero">
+    <div class="hero-copy"><span class="hero-kicker">${esc(roleCopy[0])}</span><h2>Selamat datang, ${firstName}.</h2><p>${esc(roleCopy[1])}</p><div class="hero-actions">${quickAction}</div></div>
+    <div class="hero-visual"><div class="hero-ring"></div><img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo sekolah"><span>SMK Kehutanan<br>Rimba Bahari</span></div>
+  </section>
+  <section class="metric-grid">
+    <article class="metric-card"><span class="metric-icon forest">${navIcons.journals}</span><div><small>Total Jurnal</small><strong>${total}</strong><p>Catatan kegiatan tersimpan</p></div></article>
+    <article class="metric-card"><span class="metric-icon success">✓</span><div><small>Disetujui</small><strong>${approved}</strong><p>Jurnal tervalidasi</p></div></article>
+    <article class="metric-card"><span class="metric-icon warning">⌛</span><div><small>Menunggu</small><strong>${pending}</strong><p>Perlu validasi pembimbing</p></div></article>
+    <article class="metric-card"><span class="metric-icon blue">${navIcons.attendance}</span><div><small>Presensi</small><strong>${attendance.count || 0}</strong><p>Data kehadiran tercatat</p></div></article>
+  </section>
+  <section class="dashboard-layout">
+    <article class="card progress-card"><div class="card-heading"><div><span class="section-kicker">TARGET PEMBELAJARAN</span><h3>Progres PKL 40 Hari</h3></div><strong class="progress-number">${progress}%</strong></div><div class="progress progress-large"><span style="width:${progress}%"></span></div><div class="progress-meta"><span>${approved} jurnal disetujui</span><span>${Math.max(0, 40 - approved)} jurnal menuju target</span></div></article>
+    <article class="card insight-card"><span class="insight-symbol">✦</span><div><span class="section-kicker">PENGINGAT HARI INI</span><h3>Belajar dari pengalaman nyata</h3><p>Tulis kegiatan secara spesifik, tambahkan foto dokumentasi, serta jelaskan keterampilan yang Anda peroleh.</p>${revision ? `<span class="attention-note">${revision} jurnal perlu diperbaiki</span>` : '<span class="success-note">Data Anda tersusun dengan baik</span>'}</div></article>
+  </section>`;
+
+  $('#quickJournal')?.addEventListener('click', () => navigate('my-journal'));
+  $('#quickAttendance')?.addEventListener('click', () => navigate('my-attendance'));
+  $('#quickRegistration')?.addEventListener('click', () => navigate('registrations'));
+  $('#quickUsers')?.addEventListener('click', () => navigate('users'));
+  $('#quickMonitoring')?.addEventListener('click', () => navigate('journals'));
 }
 
 async function renderUsers() {
@@ -337,18 +405,50 @@ async function renderRegistrations() {
 
   const invites = inviteResult.data || [];
   const pending = pendingResult.data || [];
-  $('#content').innerHTML = `<div class="section-head"><div><h3>Pendaftaran Mandiri Siswa</h3><p class="muted">Buat link unik untuk setiap siswa. Akun baru tetap nonaktif sampai administrator menyetujuinya.</p></div><button class="btn primary" id="createInviteBtn">Buat Link Pendaftaran</button></div>
-    <div class="card"><h3>Menunggu Verifikasi (${pending.length})</h3><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Nomor HP</th><th>Tanggal Daftar</th><th>Tindakan</th></tr></thead><tbody>${pending.map((item) => `<tr><td>${esc(item.full_name)}</td><td>${esc(item.email)}</td><td>${esc(item.phone || '-')}</td><td>${esc(formatDateTime(item.created_at))}</td><td><button class="btn primary approve-registration" data-id="${item.id}" data-name="${esc(item.full_name)}">Verifikasi & Aktifkan</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Tidak ada pendaftaran yang menunggu.</td></tr>'}</tbody></table></div></div>
-    <div class="card mt-16"><h3>Riwayat Link Pendaftaran</h3><div class="table-wrap"><table><thead><tr><th>Nama Siswa</th><th>NIS</th><th>Kelas</th><th>Status Link</th><th>Kedaluwarsa</th></tr></thead><tbody>${invites.map((item) => `<tr><td>${esc(item.full_name)}</td><td>${esc(item.nis)}</td><td>${esc(item.class_name)}</td><td>${inviteStatusBadge(item)}</td><td>${esc(formatDateTime(item.expires_at))}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Belum ada link pendaftaran.</td></tr>'}</tbody></table></div></div>`;
+  const pendingIds = pending.map((item) => item.id);
+  let details = [];
+  if (pendingIds.length) {
+    const detailResult = await sb.from('student_details')
+      .select('id,nis,class_name,internship_place,start_date,end_date')
+      .in('id', pendingIds);
+    if (detailResult.error) throw detailResult.error;
+    details = detailResult.data || [];
+  }
+  const detailById = new Map(details.map((item) => [item.id, item]));
+  const publicRegistrationLink = `${location.origin}/?register=student`;
+  const pendingRows = pending.map((item) => {
+    const detail = detailById.get(item.id) || {};
+    return `<tr><td><strong>${esc(item.full_name)}</strong><small class="table-subtext">${esc(item.email)}</small></td><td>${esc(detail.nis || '-')}</td><td>${esc(detail.class_name || '-')}</td><td>${esc(detail.internship_place || 'Belum ditentukan')}</td><td>${esc(item.phone || '-')}</td><td>${esc(formatDateTime(item.created_at))}</td><td><button class="btn primary approve-registration" data-id="${item.id}" data-name="${esc(item.full_name)}">Verifikasi & Aktifkan</button></td></tr>`;
+  }).join('') || '<tr><td colspan="7" class="empty">Tidak ada pendaftaran yang menunggu.</td></tr>';
 
-  $('#createInviteBtn').onclick = () => openInviteModal();
+  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">PENERIMAAN AKUN SISWA</span><h3>Pendaftaran Mandiri Siswa</h3><p class="muted">Siswa mengisi data sendiri melalui satu link umum. Administrator cukup mencocokkan NIS, nama, dan kelas sebelum mengaktifkan akun.</p></div></div>
+    <div class="public-link-panel">
+      <div class="public-link-icon">↗</div>
+      <div class="public-link-copy"><span class="section-kicker">LINK PENDAFTARAN UMUM</span><h4>Bagikan satu link ini kepada seluruh siswa</h4><p>Link tidak kedaluwarsa dan dapat dipasang di grup kelas, website sekolah, atau papan informasi digital.</p><div class="copy-box"><input id="publicRegistrationLink" readonly value="${esc(publicRegistrationLink)}"><button id="copyPublicRegistrationLink" class="btn primary">Salin Link</button><a class="btn secondary inline-link" href="${esc(publicRegistrationLink)}" target="_blank" rel="noopener">Buka Form</a></div></div>
+    </div>
+    <div class="card"><div class="panel-title"><div><h3>Menunggu Verifikasi (${pending.length})</h3><p>Pastikan siswa masih aktif berdasarkan data sekolah sebelum menekan tombol verifikasi.</p></div></div><div class="table-wrap"><table><thead><tr><th>Nama & Email</th><th>NIS</th><th>Kelas</th><th>Tempat PKL</th><th>Nomor HP</th><th>Tanggal Daftar</th><th>Tindakan</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div>
+    <details class="optional-invite-panel mt-16"><summary>Link khusus per siswa (opsional)</summary><div class="optional-invite-body"><div class="section-head compact"><div><h4>Undangan khusus</h4><p class="muted">Gunakan hanya bila sekolah ingin menyiapkan data siswa terlebih dahulu.</p></div><button class="btn secondary" id="createInviteBtn">Buat Link Khusus</button></div><div class="table-wrap"><table><thead><tr><th>Nama Siswa</th><th>NIS</th><th>Kelas</th><th>Status Link</th><th>Kedaluwarsa</th></tr></thead><tbody>${invites.map((item) => `<tr><td>${esc(item.full_name)}</td><td>${esc(item.nis)}</td><td>${esc(item.class_name)}</td><td>${inviteStatusBadge(item)}</td><td>${esc(formatDateTime(item.expires_at))}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Belum ada link khusus.</td></tr>'}</tbody></table></div></div></details>`;
+
+  $('#copyPublicRegistrationLink').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(publicRegistrationLink);
+      toast('Link pendaftaran umum berhasil disalin.');
+    } catch {
+      $('#publicRegistrationLink').select();
+      document.execCommand('copy');
+      toast('Link pendaftaran umum berhasil disalin.');
+    }
+  };
+  $('#createInviteBtn')?.addEventListener('click', () => openInviteModal());
   document.querySelectorAll('.approve-registration').forEach((button) => {
     button.onclick = async () => {
-      if (!confirm(`Verifikasi dan aktifkan akun ${button.dataset.name}?`)) return;
+      if (!confirm(`Apakah ${button.dataset.name} sudah dipastikan sebagai siswa aktif sekolah?\n\nPilih OK untuk mengaktifkan akunnya.`)) return;
       button.disabled = true;
+      button.textContent = 'Memverifikasi...';
       const result = await api('/api/verify-registration', { user_id: button.dataset.id });
       if (result.error) {
         button.disabled = false;
+        button.textContent = 'Verifikasi & Aktifkan';
         return toast(result.error);
       }
       toast('Akun siswa berhasil diverifikasi dan diaktifkan.');
@@ -416,13 +516,54 @@ async function openInviteModal() {
   };
 }
 
+async function showPublicStudentRegistrationView() {
+  $('#loginView').classList.add('hidden');
+  $('#registerView').classList.add('hidden');
+  $('#appView').classList.add('hidden');
+  $('#publicRegisterView').classList.remove('hidden');
+
+  const form = $('#publicStudentRegistrationForm');
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(form));
+    if (fields.password !== fields.confirm_password) return toast('Konfirmasi password tidak sama.');
+    if (fields.active_student_confirmed !== 'true') return toast('Centang pernyataan siswa aktif terlebih dahulu.');
+
+    const button = $('#publicRegistrationSubmit');
+    button.disabled = true;
+    button.textContent = 'Mengirim pendaftaran...';
+    $('#publicRegistrationStatus').textContent = 'Data sedang diperiksa dan akun menunggu dibuat.';
+
+    const result = await publicApi('/api/register-public-student', {
+      full_name: fields.full_name,
+      nis: fields.nis,
+      class_name: fields.class_name,
+      internship_place: fields.internship_place,
+      email: fields.email,
+      phone: fields.phone,
+      password: fields.password,
+      active_student_confirmed: true,
+      website: fields.website,
+    });
+    if (result.error) {
+      button.disabled = false;
+      button.textContent = 'Kirim Pendaftaran';
+      $('#publicRegistrationStatus').textContent = result.error;
+      return toast(result.error, 5000);
+    }
+
+    $('#publicRegistrationCard').innerHTML = `<div class="registration-success"><div class="success-mark">✓</div><div class="brand-block"><h1>Pendaftaran Terkirim</h1><p>Data Anda sudah masuk ke administrator sekolah. Akun belum dapat digunakan sebelum NIS, nama, dan kelas diverifikasi sebagai siswa aktif.</p></div><div class="success-summary"><span><strong>Nama</strong>${esc(fields.full_name)}</span><span><strong>NIS</strong>${esc(fields.nis)}</span><span><strong>Kelas</strong>${esc(fields.class_name)}</span></div><a class="btn primary inline-link" href="/">Kembali ke Halaman Login</a></div>`;
+  };
+}
+
 async function showRegistrationView(token) {
   $('#loginView').classList.add('hidden');
   $('#appView').classList.add('hidden');
+  $('#publicRegisterView').classList.add('hidden');
   $('#registerView').classList.remove('hidden');
   const info = await publicApi('/api/register-student', { action: 'info', token });
   if (info.error) {
-    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.png" alt="Logo sekolah" class="logo"><h1>Link Tidak Dapat Digunakan</h1><p>${esc(info.error)}</p><a class="btn secondary inline-link" href="/">Kembali ke halaman login</a></div>`;
+    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo sekolah" class="logo"><h1>Link Tidak Dapat Digunakan</h1><p>${esc(info.error)}</p><a class="btn secondary inline-link" href="/">Kembali ke halaman login</a></div>`;
     return;
   }
 
@@ -449,7 +590,7 @@ async function showRegistrationView(token) {
       $('#registrationStatus').textContent = result.error;
       return toast(result.error);
     }
-    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.png" alt="Logo sekolah" class="logo"><h1>Pendaftaran Berhasil</h1><p>Akun Anda sudah dibuat dan sedang menunggu verifikasi administrator. Anda dapat login setelah administrator mengaktifkan akun.</p><a class="btn primary inline-link" href="/">Kembali ke halaman login</a></div>`;
+    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo sekolah" class="logo"><h1>Pendaftaran Berhasil</h1><p>Akun Anda sudah dibuat dan sedang menunggu verifikasi administrator. Anda dapat login setelah administrator mengaktifkan akun.</p><a class="btn primary inline-link" href="/">Kembali ke halaman login</a></div>`;
   };
 }
 
@@ -489,16 +630,134 @@ async function openStudentModal(existing = null) {
   };
 }
 
+async function loadJournalDeletionRequests() {
+  if (!['student', 'teacher', 'admin'].includes(state.profile.role)) {
+    state.deletionRequests = [];
+    state.deletionFeatureReady = true;
+    return;
+  }
+
+  let query = sb.from('journal_deletion_requests')
+    .select('*,student:profiles!journal_deletion_requests_student_id_fkey(full_name),reviewer:profiles!journal_deletion_requests_reviewed_by_fkey(full_name)')
+    .order('requested_at', { ascending: false });
+  if (state.profile.role === 'student') query = query.eq('student_id', state.profile.id);
+  if (state.profile.role === 'teacher') query = query.eq('teacher_id', state.profile.id);
+
+  const { data, error } = await query;
+  if (error) {
+    const message = String(error.message || '').toLowerCase();
+    if (error.code === '42P01' || message.includes('journal_deletion_requests')) {
+      state.deletionRequests = [];
+      state.deletionFeatureReady = false;
+      return;
+    }
+    throw error;
+  }
+  state.deletionRequests = data || [];
+  state.deletionFeatureReady = true;
+}
+
+function deletionStatusBadge(status) {
+  const map = {
+    pending: ['Menunggu guru', 'yellow'],
+    approved: ['Disetujui & dihapus', 'green'],
+    rejected: ['Ditolak guru', 'red'],
+    canceled: ['Dibatalkan', 'gray'],
+  };
+  const item = map[status] || [status || '-', 'gray'];
+  return `<span class="badge ${item[1]}">${esc(item[0])}</span>`;
+}
+
+function latestDeletionRequest(journalId) {
+  return state.deletionRequests.find((item) => item.journal_id === journalId) || null;
+}
+
+function renderStudentDeletionHistory() {
+  if (state.profile.role !== 'student' || !state.deletionRequests.length) return '';
+  const rows = state.deletionRequests.slice(0, 10).map((request) => `<tr>
+    <td>${esc(request.journal_date || '-')}</td>
+    <td><strong>${esc(request.activity_title || '-')}</strong></td>
+    <td><span class="reason-preview">${esc(request.reason || '-')}</span></td>
+    <td>${deletionStatusBadge(request.status)}</td>
+    <td>${esc(request.review_note || '-')}</td>
+    <td>${formatDateTime(request.requested_at)}</td>
+  </tr>`).join('');
+  return `<div class="data-panel deletion-history-panel">
+    <div class="panel-title"><div><h4>Riwayat Permintaan Penghapusan</h4><p>Permintaan jurnal final tercatat sebagai arsip dan tidak dihapus tanpa persetujuan guru pembimbing.</p></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Tanggal Jurnal</th><th>Kegiatan</th><th>Alasan Siswa</th><th>Status</th><th>Catatan Guru</th><th>Diajukan</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>`;
+}
+
+function renderTeacherDeletionPanel() {
+  if (state.profile.role !== 'teacher') return '';
+  const pending = state.deletionRequests.filter((item) => item.status === 'pending');
+  const history = state.deletionRequests.filter((item) => item.status !== 'pending').slice(0, 8);
+  const pendingRows = pending.map((request) => `<tr>
+    <td>${esc(request.student?.full_name || '-')}</td>
+    <td>${esc(request.journal_date || '-')}</td>
+    <td><strong>${esc(request.activity_title || '-')}</strong></td>
+    <td><span class="reason-preview">${esc(request.reason || '-')}</span></td>
+    <td>${formatDateTime(request.requested_at)}</td>
+    <td><button class="btn warn review-delete-request" data-id="${request.id}">Tinjau Permintaan</button></td>
+  </tr>`).join('') || '<tr><td colspan="6" class="empty">Tidak ada permintaan penghapusan yang menunggu.</td></tr>';
+  const historyRows = history.map((request) => `<tr>
+    <td>${esc(request.student?.full_name || '-')}</td><td>${esc(request.activity_title || '-')}</td><td>${deletionStatusBadge(request.status)}</td><td>${esc(request.review_note || '-')}</td><td>${formatDateTime(request.reviewed_at)}</td>
+  </tr>`).join('') || '<tr><td colspan="5" class="empty">Belum ada riwayat keputusan.</td></tr>';
+
+  return `<div class="deletion-review-grid">
+    <div class="data-panel deletion-request-panel">
+      <div class="panel-title"><div><span class="section-kicker">PERSETUJUAN GURU</span><h4>Permintaan Penghapusan Jurnal (${pending.length})</h4><p>Jurnal yang telah disetujui hanya terhapus setelah guru pembimbing memeriksa alasan siswa.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Siswa</th><th>Tanggal</th><th>Kegiatan</th><th>Alasan</th><th>Diajukan</th><th>Tindakan</th></tr></thead><tbody>${pendingRows}</tbody></table></div>
+    </div>
+    <div class="data-panel deletion-history-panel">
+      <div class="panel-title"><div><h4>Riwayat Keputusan</h4><p>Arsip persetujuan dan penolakan penghapusan jurnal.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Siswa</th><th>Kegiatan</th><th>Status</th><th>Catatan Guru</th><th>Diproses</th></tr></thead><tbody>${historyRows}</tbody></table></div>
+    </div>
+  </div>`;
+}
+
 async function renderJournals() {
   let query = sb.from('daily_journals')
     .select('*,student:profiles!daily_journals_student_id_fkey(full_name),validator:profiles!daily_journals_validated_by_fkey(full_name)')
     .order('journal_date', { ascending: false });
   if (state.profile.role === 'student') query = query.eq('student_id', state.profile.id);
-  const { data, error } = await query;
+  const [{ data, error }] = await Promise.all([query, loadJournalDeletionRequests()]);
   if (error) throw error;
   state.journals = data || [];
   const canAdd = state.profile.role === 'student';
-  $('#content').innerHTML = `<div class="section-head"><h3>${canAdd ? 'Jurnal Harian Saya' : 'Daftar Jurnal Siswa'}</h3>${canAdd ? '<button class="btn primary" id="addJournalBtn">Isi Jurnal</button>' : ''}</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Foto</th><th>Tahapan</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${state.journals.map((journal) => `<tr><td>${esc(journal.journal_date)}</td><td>${esc(journal.student?.full_name || state.profile.full_name)}</td><td>${esc(journal.activity_title)}</td><td>${(journal.photo_paths || []).length ? `${journal.photo_paths.length} foto` : '-'}</td><td>${esc((journal.activity_stages || []).join(', '))}</td><td>${statusBadge(journal.status)}</td><td><div class="actions">${canAdd && ['draft', 'revision'].includes(journal.status) ? `<button class="btn secondary edit-journal" data-id="${journal.id}">Edit</button>` : ''}${!canAdd && journal.status === 'submitted' ? `<button class="btn primary validate-journal" data-id="${journal.id}">Validasi</button>` : ''}<button class="btn secondary view-journal" data-id="${journal.id}">Lihat</button></div></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Belum ada jurnal.</td></tr>'}</tbody></table></div>`;
+  const draftCount = state.journals.filter((item) => item.status === 'draft').length;
+  const pendingCount = state.journals.filter((item) => item.status === 'submitted').length;
+  const approvedCount = state.journals.filter((item) => item.status === 'approved').length;
+  const revisionCount = state.journals.filter((item) => item.status === 'revision').length;
+  const pendingDeletionCount = state.deletionRequests.filter((item) => item.status === 'pending').length;
+  const featureWarning = !state.deletionFeatureReady
+    ? '<div class="feature-warning"><strong>Fitur persetujuan penghapusan belum aktif.</strong> Jalankan SQL <code>enable-approved-journal-deletion.sql</code> di Supabase.</div>'
+    : '';
+
+  $('#content').innerHTML = `<div class="page-intro"><div><span class="section-kicker">DOKUMENTASI PEMBELAJARAN</span><h3>${canAdd ? 'Jurnal Harian Saya' : 'Daftar Jurnal Siswa'}</h3><p>${canAdd ? 'Catat kegiatan, hasil belajar, kendala, refleksi, dan foto dokumentasi kegiatan PKL.' : 'Pantau catatan kegiatan dan perkembangan pembelajaran siswa selama PKL.'}</p></div>${canAdd ? '<button class="btn primary btn-emphasis" id="addJournalBtn">＋ Isi Jurnal Baru</button>' : ''}</div>
+    ${featureWarning}
+    <div class="journal-summary">
+      <div><strong>${state.journals.length}</strong><span>Semua jurnal</span></div>
+      <div><strong>${draftCount}</strong><span>Draf</span></div>
+      <div><strong>${pendingCount}</strong><span>Menunggu</span></div>
+      <div><strong>${approvedCount}</strong><span>Disetujui</span></div>
+      <div><strong>${canAdd ? pendingDeletionCount : revisionCount}</strong><span>${canAdd ? 'Menunggu hapus' : 'Perlu perbaikan'}</span></div>
+    </div>
+    ${renderTeacherDeletionPanel()}
+    <div class="data-panel"><div class="panel-title"><div><h4>Riwayat Jurnal</h4><p>Jurnal terbaru ditampilkan paling atas.</p></div>${canAdd ? '<span class="policy-note">Draf/revisi dapat dihapus langsung. Jurnal disetujui memerlukan konfirmasi guru.</span>' : ''}</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Foto</th><th>Tahapan</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${state.journals.map((journal) => {
+      const canModify = canAdd && ['draft', 'revision'].includes(journal.status);
+      const canDelete = canAdd && REMOVABLE_JOURNAL_STATUSES.includes(journal.status);
+      const deletionRequest = canAdd ? latestDeletionRequest(journal.id) : null;
+      const canRequestApprovedDeletion = canAdd && journal.status === 'approved' && state.deletionFeatureReady && (!deletionRequest || deletionRequest.status === 'rejected' || deletionRequest.status === 'canceled');
+      const requestButtonLabel = deletionRequest?.status === 'rejected' ? 'Ajukan Ulang Hapus' : 'Ajukan Hapus';
+      const requestState = deletionRequest?.status === 'pending'
+        ? '<span class="mini-status pending">Menunggu konfirmasi guru</span>'
+        : deletionRequest?.status === 'rejected'
+          ? '<span class="mini-status rejected">Permintaan sebelumnya ditolak</span>'
+          : '';
+      return `<tr><td><span class="date-cell">${esc(journal.journal_date)}</span></td><td>${esc(journal.student?.full_name || state.profile.full_name)}</td><td><strong class="activity-title">${esc(journal.activity_title)}</strong><small class="activity-location">${esc(journal.location || '-')}</small>${requestState}</td><td>${(journal.photo_paths || []).length ? `<span class="photo-count">▣ ${journal.photo_paths.length}</span>` : '<span class="muted">—</span>'}</td><td><span class="stage-text">${esc((journal.activity_stages || []).join(', ') || '-')}</span></td><td>${statusBadge(journal.status)}</td><td><div class="actions">${canModify ? `<button class="btn secondary edit-journal" data-id="${journal.id}">Edit</button>` : ''}${!canAdd && journal.status === 'submitted' ? `<button class="btn primary validate-journal" data-id="${journal.id}">Validasi</button>` : ''}<button class="btn secondary view-journal" data-id="${journal.id}">Lihat</button>${canDelete ? `<button class="btn danger delete-journal" data-id="${journal.id}">Hapus</button>` : ''}${canRequestApprovedDeletion ? `<button class="btn warn request-delete-journal" data-id="${journal.id}">${requestButtonLabel}</button>` : ''}</div></td></tr>`;
+    }).join('') || '<tr><td colspan="7" class="empty"><div class="empty-state"><span>▤</span><strong>Belum ada jurnal</strong><p>Mulai dokumentasikan kegiatan PKL Anda.</p></div></td></tr>'}</tbody></table></div></div>
+    ${renderStudentDeletionHistory()}`;
   if (canAdd) $('#addJournalBtn').onclick = () => openJournalModal();
   document.querySelectorAll('.edit-journal').forEach((button) => {
     button.onclick = () => openJournalModal(state.journals.find((item) => item.id === button.dataset.id));
@@ -509,6 +768,123 @@ async function renderJournals() {
   document.querySelectorAll('.view-journal').forEach((button) => {
     button.onclick = () => viewJournal(state.journals.find((item) => item.id === button.dataset.id));
   });
+  document.querySelectorAll('.delete-journal').forEach((button) => {
+    button.onclick = () => deleteJournal(state.journals.find((item) => item.id === button.dataset.id), button);
+  });
+  document.querySelectorAll('.request-delete-journal').forEach((button) => {
+    button.onclick = () => openDeletionRequestModal(state.journals.find((item) => item.id === button.dataset.id));
+  });
+  document.querySelectorAll('.review-delete-request').forEach((button) => {
+    button.onclick = () => openDeletionReviewModal(state.deletionRequests.find((item) => item.id === button.dataset.id));
+  });
+}
+
+function openDeletionRequestModal(journal) {
+  if (!journal || state.profile.role !== 'student' || journal.student_id !== state.profile.id || journal.status !== 'approved') {
+    return toast('Jurnal ini tidak dapat diajukan untuk dihapus.');
+  }
+  modal('Ajukan Penghapusan Jurnal', `<div class="approval-warning"><strong>Jurnal ini sudah disetujui.</strong><p>Jurnal tidak langsung dihapus. Guru pembimbing akan meninjau alasan Anda terlebih dahulu.</p></div>
+    <div class="request-journal-summary"><span>${esc(journal.journal_date)}</span><strong>${esc(journal.activity_title)}</strong><p>${esc(journal.description || '-')}</p></div>
+    <form id="deletionRequestForm" class="form-stack">
+      <label>Alasan penghapusan jurnal<textarea name="reason" minlength="10" maxlength="1000" required placeholder="Jelaskan kesalahan atau alasan jurnal perlu dihapus, minimal 10 karakter."></textarea></label>
+      <p class="form-help">Alasan ini akan dibaca dan menjadi arsip keputusan guru pembimbing.</p>
+      <div class="actions"><button class="btn warn" id="submitDeletionRequest">Kirim Permintaan</button><button type="button" class="btn secondary modal-close">Batal</button></div>
+    </form>`);
+  $('#deletionRequestForm').onsubmit = async (event) => {
+    event.preventDefault();
+    const button = $('#submitDeletionRequest');
+    const reason = String(new FormData(event.currentTarget).get('reason') || '').trim();
+    if (reason.length < 10) return toast('Alasan penghapusan minimal 10 karakter.');
+    button.disabled = true;
+    button.textContent = 'Mengirim...';
+    const result = await api('/api/request-journal-deletion', { journal_id: journal.id, reason });
+    if (result.error) {
+      button.disabled = false;
+      button.textContent = 'Kirim Permintaan';
+      return toast(result.error, 5000);
+    }
+    closeModal();
+    toast('Permintaan penghapusan dikirim kepada guru pembimbing.');
+    await renderJournals();
+  };
+}
+
+function openDeletionReviewModal(request) {
+  if (!request || state.profile.role !== 'teacher' || request.status !== 'pending') {
+    return toast('Permintaan ini tidak dapat diproses.');
+  }
+  modal('Konfirmasi Penghapusan Jurnal', `<div class="approval-warning teacher"><strong>Keputusan guru pembimbing</strong><p>Jika disetujui, jurnal dan foto dokumentasinya akan dihapus permanen. Riwayat permintaan tetap tersimpan.</p></div>
+    <div class="review-request-detail">
+      <div><span>Siswa</span><strong>${esc(request.student?.full_name || '-')}</strong></div>
+      <div><span>Tanggal jurnal</span><strong>${esc(request.journal_date || '-')}</strong></div>
+      <div class="wide"><span>Kegiatan</span><strong>${esc(request.activity_title || '-')}</strong></div>
+      <div class="wide reason-box"><span>Alasan siswa</span><p>${esc(request.reason || '-')}</p></div>
+    </div>
+    <form id="deletionReviewForm" class="form-stack">
+      <label>Catatan/pertimbangan guru<textarea name="review_note" minlength="5" maxlength="1000" required placeholder="Tuliskan dasar persetujuan atau alasan penolakan."></textarea></label>
+      <div class="actions"><button type="button" class="btn danger deletion-decision" data-decision="approved">Konfirmasi & Hapus</button><button type="button" class="btn warn deletion-decision" data-decision="rejected">Tolak Permintaan</button><button type="button" class="btn secondary modal-close">Batal</button></div>
+    </form>`);
+  document.querySelectorAll('.deletion-decision').forEach((button) => {
+    button.onclick = async () => {
+      const reviewNote = String(new FormData($('#deletionReviewForm')).get('review_note') || '').trim();
+      if (reviewNote.length < 5) return toast('Catatan guru minimal 5 karakter.');
+      const decision = button.dataset.decision;
+      if (decision === 'approved' && !window.confirm('Yakin menyetujui? Jurnal dan seluruh foto dokumentasinya akan dihapus permanen.')) return;
+      document.querySelectorAll('.deletion-decision').forEach((item) => { item.disabled = true; });
+      button.textContent = decision === 'approved' ? 'Menghapus...' : 'Memproses...';
+      const result = await api('/api/review-journal-deletion', {
+        request_id: request.id,
+        decision,
+        review_note: reviewNote,
+      }, { timeout: 30000 });
+      if (result.error) {
+        document.querySelectorAll('.deletion-decision').forEach((item) => { item.disabled = false; });
+        button.textContent = decision === 'approved' ? 'Konfirmasi & Hapus' : 'Tolak Permintaan';
+        return toast(result.error, 5000);
+      }
+      closeModal();
+      toast(decision === 'approved' ? 'Penghapusan disetujui dan jurnal telah dihapus.' : 'Permintaan penghapusan ditolak.');
+      if (result.warning) toast(result.warning, 6000);
+      await renderJournals();
+    };
+  });
+}
+
+async function deleteJournal(journal, button) {
+  if (!journal || state.profile.role !== 'student' || journal.student_id !== state.profile.id) {
+    return toast('Jurnal ini tidak dapat dihapus.');
+  }
+  if (!REMOVABLE_JOURNAL_STATUSES.includes(journal.status)) {
+    return toast('Hanya jurnal draf, revisi, atau ditolak yang dapat dihapus.');
+  }
+  const confirmed = window.confirm(`Hapus jurnal "${journal.activity_title}"?\n\nJurnal dan foto dokumentasinya akan dihapus permanen.`);
+  if (!confirmed) return;
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = 'Menghapus...';
+  const paths = [...(journal.photo_paths || [])];
+  try {
+    const { data, error } = await sb.from('daily_journals')
+      .delete()
+      .eq('id', journal.id)
+      .eq('student_id', state.profile.id)
+      .in('status', REMOVABLE_JOURNAL_STATUSES)
+      .select('id');
+    if (error) throw error;
+    if (!data?.length) throw new Error('Jurnal tidak terhapus. Jalankan SQL izin hapus jurnal terlebih dahulu.');
+    if (paths.length) {
+      const { error: storageError } = await sb.storage.from(PHOTO_BUCKET).remove(paths);
+      if (storageError) console.warn('Jurnal terhapus, tetapi pembersihan foto gagal:', storageError);
+    }
+    toast('Jurnal berhasil dihapus.');
+    await renderJournals();
+  } catch (error) {
+    console.error(error);
+    button.disabled = false;
+    button.textContent = originalText;
+    toast(error.message, 5000);
+  }
 }
 
 async function openJournalModal(journal = null) {

@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v8-admin-password';
+const CACHE = 'ejurnal-rbs-v9-registration-hotfix';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=8',
-  '/app.js?v=8',
-  '/config.js?v=8',
+  '/styles.css?v=9',
+  '/app.js?v=9',
+  '/config.js?v=9',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'
