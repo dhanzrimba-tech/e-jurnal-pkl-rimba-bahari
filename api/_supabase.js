@@ -145,7 +145,13 @@ export async function requireActiveAdmin(req) {
 }
 
 export function publicError(error) {
-  const message = String(error?.message || 'Terjadi kesalahan pada server.');
+  const raw = error?.message ?? error?.error_description ?? error?.details ?? error?.hint ?? error?.error ?? error;
+  let message = 'Terjadi kesalahan pada server.';
+  if (typeof raw === 'string' && raw.trim()) message = raw.trim();
+  else if (raw && typeof raw === 'object') {
+    try { message = JSON.stringify(raw); } catch { message = 'Terjadi kesalahan pada server.'; }
+  }
+  message = String(message);
   const normalized = message.toLowerCase();
 
   if (
