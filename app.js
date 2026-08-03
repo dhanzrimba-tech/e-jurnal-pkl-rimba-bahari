@@ -301,72 +301,29 @@ async function renderDashboard() {
 
 async function renderUsers() {
   if (state.profile.role !== 'admin') return navigate('dashboard');
+  const { data, error } = await sb.from('profiles')
+    .select('id,full_name,email,role,is_active,registration_status,created_at')
+    .order('full_name');
+  if (error) throw error;
 
-  const [profilesResult, requestsResult] = await Promise.all([
-    sb.from('profiles')
-      .select('id,full_name,email,role,is_active,registration_status,created_at')
-      .order('full_name'),
-    sb.from('account_deletion_requests')
-      .select('*')
-      .order('requested_at', { ascending: false })
-      .limit(100),
-  ]);
-
-  if (profilesResult.error) throw profilesResult.error;
-  if (requestsResult.error) {
-    throw new Error('Fitur persetujuan penghapusan akun belum siap. Jalankan database/enable-account-deletion-approval.sql di SQL Editor Supabase.');
-  }
-
-  const data = profilesResult.data || [];
-  const requests = requestsResult.data || [];
-  const pendingRequests = requests.filter((item) => item.status === 'pending');
-  const completedRequests = requests.filter((item) => item.status !== 'pending').slice(0, 20);
-  const pendingByTarget = new Map(pendingRequests.map((item) => [item.target_user_id, item]));
-
-  const pendingRows = pendingRequests.map((request) => `<tr>
-    <td><strong>${esc(request.target_full_name)}</strong><span class="table-subtext">${esc(request.target_email)}</span></td>
-    <td>${esc(roles[request.target_role] || request.target_role)}</td>
-    <td><span class="reason-preview">${esc(request.reason)}</span></td>
-    <td>${esc(request.requested_by_name || 'Administrator')}<span class="table-subtext">${esc(formatDateTime(request.requested_at))}</span></td>
-    <td><button class="btn warn review-account-delete" data-id="${request.id}">Tinjau & Putuskan</button></td>
-  </tr>`).join('') || '<tr><td colspan="5" class="empty">Tidak ada permintaan penghapusan akun yang menunggu persetujuan.</td></tr>';
-
-  const historyRows = completedRequests.map((request) => `<tr>
-    <td><strong>${esc(request.target_full_name)}</strong><span class="table-subtext">${esc(request.target_email)}</span></td>
-    <td>${request.status === 'approved' ? '<span class="badge green">Disetujui & Dihapus</span>' : '<span class="badge red">Ditolak</span>'}</td>
-    <td>${esc(request.reason)}</td>
-    <td>${esc(request.review_note || '-')}<span class="table-subtext">${esc(request.reviewed_by_name || 'Administrator')} • ${esc(formatDateTime(request.reviewed_at))}</span></td>
-  </tr>`).join('') || '<tr><td colspan="4" class="empty">Belum ada riwayat keputusan penghapusan akun.</td></tr>';
-
-  $('#content').innerHTML = `<section class="card deletion-request-panel account-approval-panel">
-      <div class="panel-title"><div><span class="section-kicker">PERSETUJUAN ADMINISTRATOR</span><h3>Permintaan Penghapusan Akun</h3><p>Akun belum dihapus sampai administrator meninjau alasan dan memberikan keputusan.</p></div><span class="request-count">${pendingRequests.length}</span></div>
-      <div class="table-wrap"><table><thead><tr><th>Akun</th><th>Peran</th><th>Alasan Penghapusan</th><th>Diajukan Oleh</th><th>Keputusan</th></tr></thead><tbody>${pendingRows}</tbody></table></div>
-    </section>
-
-    <div class="section-head"><div><h3>Akun Pengguna</h3><p class="section-subtitle">Penghapusan akun nonadministrator wajib diajukan dengan alasan dan disetujui terlebih dahulu.</p></div><button class="btn primary" id="addUserBtn">Tambah Akun</button></div>
+  const users = data || [];
+  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">MANAJEMEN PENGGUNA</span><h3>Akun Pengguna</h3><p>Administrator dapat mengelola dan menghapus langsung akun nonadministrator.</p></div><button class="btn primary" id="addUserBtn">Tambah Akun</button></div>
+    <div class="info-strip account-delete-direct-note"><strong>Penghapusan langsung oleh administrator.</strong> Alasan wajib diisi dan tindakan tidak dapat dibatalkan. Akun administrator tetap dilindungi.</div>
     <div class="toolbar"><input id="userSearch" placeholder="Cari nama atau email..."><select id="roleFilter"><option value="">Semua peran</option><option value="student">Siswa</option><option value="teacher">Guru</option><option value="field_supervisor">Pembimbing lapangan</option><option value="admin">Administrator</option></select></div>
-    <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="userRows"></tbody></table></div>
-
-    <details class="optional-invite-panel account-delete-history" ${completedRequests.length ? '' : 'open'}>
-      <summary>Riwayat Keputusan Penghapusan Akun (${completedRequests.length})</summary>
-      <div class="optional-invite-body"><div class="table-wrap"><table><thead><tr><th>Akun</th><th>Keputusan</th><th>Alasan Pengajuan</th><th>Catatan Administrator</th></tr></thead><tbody>${historyRows}</tbody></table></div></div>
-    </details>`;
+    <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="userRows"></tbody></table></div>`;
 
   const draw = () => {
     const query = $('#userSearch').value.toLowerCase();
     const role = $('#roleFilter').value;
-    $('#userRows').innerHTML = data.filter((item) =>
+    $('#userRows').innerHTML = users.filter((item) =>
       (!role || item.role === role) && `${item.full_name} ${item.email}`.toLowerCase().includes(query))
       .map((item) => {
-        const pending = pendingByTarget.get(item.id);
         const deletionAction = item.role === 'admin'
           ? '<span class="protected-account">Dilindungi</span>'
-          : pending
-            ? '<button class="btn secondary" disabled>Menunggu Persetujuan</button>'
-            : `<button class="btn danger request-delete-user" data-id="${item.id}">Ajukan Hapus</button>`;
+          : `<button class="btn danger delete-user" data-id="${item.id}">Hapus Akun</button>`;
         return `<tr><td>${esc(item.full_name)}</td><td>${esc(item.email)}</td><td>${esc(roles[item.role] || item.role)}</td><td>${userStatusBadge(item)}</td><td><div class="actions"><button class="btn warn reset-pass" data-id="${item.id}" data-name="${esc(item.full_name)}">Reset Password</button><button class="btn secondary edit-profile" data-id="${item.id}">Edit</button>${deletionAction}</div></td></tr>`;
       }).join('') || '<tr><td colspan="5" class="empty">Tidak ada data.</td></tr>';
-    bindUserActions(data, requests);
+    bindUserActions(users);
   };
 
   $('#userSearch').oninput = draw;
@@ -375,152 +332,81 @@ async function renderUsers() {
   draw();
 }
 
-function bindUserActions(data, requests = []) {
+function bindUserActions(data) {
   document.querySelectorAll('.reset-pass').forEach((button) => {
     button.onclick = () => openResetModal(button.dataset.id, button.dataset.name);
   });
   document.querySelectorAll('.edit-profile').forEach((button) => {
     button.onclick = () => openEditProfile(data.find((item) => item.id === button.dataset.id));
   });
-  document.querySelectorAll('.request-delete-user').forEach((button) => {
-    button.onclick = () => openRequestDeleteUserModal(data.find((item) => item.id === button.dataset.id));
-  });
-  document.querySelectorAll('.review-account-delete').forEach((button) => {
-    button.onclick = () => openReviewAccountDeletionModal(requests.find((item) => item.id === button.dataset.id));
+  document.querySelectorAll('.delete-user').forEach((button) => {
+    button.onclick = () => openDeleteUserModal(data.find((item) => item.id === button.dataset.id));
   });
 }
 
-function openRequestDeleteUserModal(profile) {
+function openDeleteUserModal(profile) {
   if (!profile || profile.role === 'admin') {
     return toast('Akun administrator dilindungi dan tidak dapat dihapus.');
   }
 
-  modal('Ajukan Penghapusan Akun', `<div class="approval-warning teacher">
-    <strong>Akun belum akan langsung dihapus.</strong>
-    <p>Permintaan dan alasan akan masuk ke daftar persetujuan administrator. Penghapusan permanen hanya terjadi setelah permintaan disetujui.</p>
+  modal('Hapus Akun Pengguna', `<div class="approval-warning teacher">
+    <strong>Administrator akan mengeksekusi penghapusan langsung.</strong>
+    <p>Akun autentikasi, profil, dan data terkait akan dihapus permanen tanpa tahap pengajuan tambahan. Tindakan ini tidak dapat dibatalkan.</p>
   </div>
   <div class="card account-delete-summary">
     <p><strong>Nama:</strong> ${esc(profile.full_name)}</p>
     <p><strong>Email:</strong> ${esc(profile.email)}</p>
     <p><strong>Peran:</strong> ${esc(roles[profile.role] || profile.role)}</p>
   </div>
-  <form id="requestDeleteUserForm" class="form-stack">
+  <form id="deleteUserForm" class="form-stack">
     <label>Alasan penghapusan akun
       <textarea name="reason" minlength="10" maxlength="1000" required placeholder="Contoh: akun dibuat ganda, siswa sudah pindah sekolah, atau data pengguna tidak lagi digunakan"></textarea>
     </label>
-    <p class="form-help">Minimal 10 karakter. Alasan akan tersimpan dalam riwayat audit.</p>
+    <p class="form-help">Minimal 10 karakter. Alasan dicatat sebagai audit administrator.</p>
+    <label>Ketik <strong>HAPUS</strong> untuk mengonfirmasi
+      <input name="confirmation" autocomplete="off" placeholder="HAPUS" required>
+    </label>
     <div class="actions">
-      <button type="submit" class="btn danger" id="requestDeleteUserSubmit">Kirim Permintaan</button>
+      <button type="submit" class="btn danger" id="deleteUserSubmit">Hapus Akun Permanen</button>
       <button type="button" class="btn secondary modal-close">Batal</button>
     </div>
-    <p class="form-help" id="requestDeleteUserStatus" aria-live="polite"></p>
+    <p class="form-help" id="deleteUserStatus" aria-live="polite"></p>
   </form>`);
 
-  $('#requestDeleteUserForm').onsubmit = async (event) => {
+  $('#deleteUserForm').onsubmit = async (event) => {
     event.preventDefault();
     const fields = Object.fromEntries(new FormData(event.currentTarget));
     const reason = String(fields.reason || '').trim();
+    const confirmation = String(fields.confirmation || '').trim();
     if (reason.length < 10) return toast('Alasan penghapusan minimal 10 karakter.');
+    if (confirmation !== 'HAPUS') return toast('Ketik HAPUS dengan huruf kapital untuk melanjutkan.');
 
-    const button = $('#requestDeleteUserSubmit');
-    const status = $('#requestDeleteUserStatus');
+    const button = $('#deleteUserSubmit');
+    const status = $('#deleteUserStatus');
     button.disabled = true;
-    button.textContent = 'Mengirim...';
-    status.textContent = 'Menyimpan permintaan persetujuan.';
+    button.textContent = 'Menghapus akun...';
+    status.textContent = 'Membersihkan akun dan data terkait. Mohon tunggu.';
 
     try {
-      const result = await api('/api/request-account-deletion', {
+      const result = await api('/api/delete-user', {
         user_id: profile.id,
+        confirmation: 'HAPUS',
         reason,
-      });
+      }, { timeout: 45000 });
       if (result.error) {
         status.textContent = result.error;
         return toast(`Gagal: ${result.error}`);
       }
       closeModal();
-      toast('Permintaan penghapusan dibuat. Akun belum dihapus dan menunggu persetujuan.');
+      toast(result.warning || result.message || 'Akun berhasil dihapus permanen.');
       await renderUsers();
     } finally {
       if (document.body.contains(button)) {
         button.disabled = false;
-        button.textContent = 'Kirim Permintaan';
+        button.textContent = 'Hapus Akun Permanen';
       }
     }
   };
-}
-
-function openReviewAccountDeletionModal(request) {
-  if (!request || request.status !== 'pending') return toast('Permintaan tidak tersedia atau sudah diproses.');
-
-  modal('Tinjau Penghapusan Akun', `<div class="approval-warning teacher">
-    <strong>Keputusan administrator diperlukan.</strong>
-    <p>Jika disetujui, akun dan data terkait akan dihapus permanen. Jika ditolak, akun tetap aktif.</p>
-  </div>
-  <div class="review-request-detail">
-    <div><span>Nama akun</span><strong>${esc(request.target_full_name)}</strong></div>
-    <div><span>Peran</span><strong>${esc(roles[request.target_role] || request.target_role)}</strong></div>
-    <div class="wide"><span>Email</span><strong>${esc(request.target_email)}</strong></div>
-    <div class="wide reason-box"><span>Alasan penghapusan</span><p>${esc(request.reason)}</p></div>
-    <div><span>Diajukan oleh</span><strong>${esc(request.requested_by_name || 'Administrator')}</strong></div>
-    <div><span>Tanggal pengajuan</span><strong>${esc(formatDateTime(request.requested_at))}</strong></div>
-  </div>
-  <form id="reviewAccountDeletionForm" class="form-stack">
-    <label>Catatan keputusan administrator
-      <textarea name="review_note" minlength="5" maxlength="1000" required placeholder="Tuliskan hasil pemeriksaan dan dasar keputusan"></textarea>
-    </label>
-    <label>Khusus persetujuan: ketik <strong>SETUJUI</strong>
-      <input name="confirmation" autocomplete="off" placeholder="SETUJUI">
-    </label>
-    <div class="actions">
-      <button type="button" class="btn danger account-delete-decision" data-decision="approved">Setujui & Hapus Permanen</button>
-      <button type="button" class="btn warn account-delete-decision" data-decision="rejected">Tolak Permintaan</button>
-      <button type="button" class="btn secondary modal-close">Batal</button>
-    </div>
-    <p class="form-help" id="reviewAccountDeletionStatus" aria-live="polite"></p>
-  </form>`);
-
-  document.querySelectorAll('.account-delete-decision').forEach((button) => {
-    button.onclick = async () => {
-      const form = $('#reviewAccountDeletionForm');
-      const fields = Object.fromEntries(new FormData(form));
-      const decision = button.dataset.decision;
-      const reviewNote = String(fields.review_note || '').trim();
-      const confirmation = String(fields.confirmation || '').trim();
-      if (reviewNote.length < 5) return toast('Catatan keputusan minimal 5 karakter.');
-      if (decision === 'approved' && confirmation !== 'SETUJUI') {
-        return toast('Ketik SETUJUI dengan huruf kapital untuk menghapus akun.');
-      }
-
-      const allButtons = document.querySelectorAll('.account-delete-decision');
-      allButtons.forEach((item) => { item.disabled = true; });
-      const status = $('#reviewAccountDeletionStatus');
-      status.textContent = decision === 'approved'
-        ? 'Menghapus akun dan data terkait. Mohon tunggu.'
-        : 'Menyimpan penolakan permintaan.';
-
-      try {
-        const result = await api('/api/review-account-deletion', {
-          request_id: request.id,
-          decision,
-          review_note: reviewNote,
-          confirmation: decision === 'approved' ? confirmation : '',
-        }, { timeout: 45000 });
-        if (result.error) {
-          status.textContent = result.error;
-          return toast(`Gagal: ${result.error}`);
-        }
-        closeModal();
-        toast(result.warning || result.message || (decision === 'approved'
-          ? 'Akun disetujui untuk dihapus dan sudah dihapus permanen.'
-          : 'Permintaan penghapusan ditolak.'));
-        await renderUsers();
-      } finally {
-        if (document.body.contains(form)) {
-          allButtons.forEach((item) => { item.disabled = false; });
-        }
-      }
-    };
-  });
 }
 
 function openUserModal() {
