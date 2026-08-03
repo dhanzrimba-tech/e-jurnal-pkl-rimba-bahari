@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#174C35" />
+  <meta name="description" content="E-Jurnal PKL SMK Kehutanan Rimba Bahari Sumedang" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/assets/logo-sekolah.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <title>E-Jurnal PKL Rimba Bahari</title>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <section id="loginView" class="login-page">
+    <div class="login-card">
+      <div class="brand-block">
+        <img src="/assets/logo-sekolah.svg" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
+        <h1>E-Jurnal PKL</h1>
+        <p>SMK Kehutanan Rimba Bahari Sumedang</p>
+      </div>
+      <form id="loginForm" class="form-stack">
+        <label>Email<input id="loginEmail" type="email" required placeholder="nama@sekolah.sch.id" /></label>
+        <label>Kata sandi<input id="loginPassword" type="password" required minlength="6" /></label>
+        <button class="btn primary" type="submit">Masuk</button>
+      </form>
+      <div class="demo-note">
+        <strong>Siswa baru:</strong> gunakan link pendaftaran unik yang diberikan administrator. Akun aktif setelah diverifikasi.
+      </div>
+    </div>
+  </section>
+
+  <section id="registerView" class="login-page hidden">
+    <div class="login-card" id="registrationCard">
+      <div class="brand-block">
+        <img src="/assets/logo-sekolah.svg" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
+        <h1>Pendaftaran Siswa</h1>
+        <p id="registrationStudentName">Memuat data siswa...</p>
+        <small id="registrationStudentMeta" class="muted"></small>
+      </div>
+      <form id="studentRegistrationForm" class="form-stack registration-form hidden">
+        <label>Email aktif<input name="email" type="email" autocomplete="email" required placeholder="nama@email.com"></label>
+        <label>Nomor HP<input name="phone" inputmode="tel" autocomplete="tel" placeholder="08xxxxxxxxxx"></label>
+        <label>Buat password<input name="password" type="password" minlength="8" autocomplete="new-password" required></label>
+        <label>Ulangi password<input name="confirm_password" type="password" minlength="8" autocomplete="new-password" required></label>
+        <button class="btn primary" type="submit">Daftar Sekarang</button>
+        <p id="registrationStatus" class="form-help" aria-live="polite"></p>
+      </form>
+      <div class="demo-note">Setelah mendaftar, tunggu administrator memverifikasi akun sebelum login.</div>
+    </div>
+  </section>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img src="/assets/logo-sekolah.svg" alt="Logo sekolah" />
+        <div><strong>E-Jurnal PKL</strong><small>Rimba Bahari Sumedang</small></div>
+      </div>
+      <nav id="navMenu"></nav>
+      <button id="logoutBtn" class="btn ghost full">Keluar</button>
+    </aside>
+    <main class="main-area">
+      <header class="topbar">
+        <button id="menuToggle" class="icon-btn">☰</button>
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="userInfo"></p>
+        </div>
+      </header>
+      <div id="content" class="content"></div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
