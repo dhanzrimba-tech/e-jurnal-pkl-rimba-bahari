@@ -3,31 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#174C35" />
+  <meta name="theme-color" content="#0E4A37" />
   <meta name="description" content="E-Jurnal PKL SMK Kehutanan Rimba Bahari Sumedang" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/assets/logo-sekolah.png" />
-  <link rel="stylesheet" href="/styles.css?v=4" />
+  <link rel="stylesheet" href="/styles.css?v=8" />
   <title>E-Jurnal PKL Rimba Bahari</title>
 </head>
 <body>
   <div id="toast" class="toast"></div>
-  <div id="startupError" hidden style="position:fixed;left:16px;right:16px;top:16px;z-index:9999;background:#fee4e2;color:#912018;border:1px solid #f04438;border-radius:12px;padding:14px;font:600 14px Arial,sans-serif"></div>
+  <div id="startupError" hidden class="startup-error"></div>
 
   <section id="loginView" class="login-page">
-    <div class="login-card">
-      <div class="brand-block">
-        <img src="/assets/logo-sekolah.png" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
-        <h1>E-Jurnal PKL</h1>
-        <p>SMK Kehutanan Rimba Bahari Sumedang</p>
+    <div class="login-shell">
+      <div class="login-showcase">
+        <span class="login-kicker">SISTEM PEMBELAJARAN PKL TERINTEGRASI</span>
+        <h2>Belajar di lapangan.<br>Mencatat dengan tertib.<br>Bertumbuh dengan nyata.</h2>
+        <p>E-Jurnal membantu siswa, guru, dan pembimbing mendokumentasikan kegiatan PKL secara profesional.</p>
+        <div class="login-features">
+          <span>✓ Jurnal harian & foto</span>
+          <span>✓ Presensi daring</span>
+          <span>✓ Validasi pembimbing</span>
+        </div>
       </div>
-      <form id="loginForm" class="form-stack">
-        <label>Email<input id="loginEmail" type="email" required placeholder="nama@sekolah.sch.id" /></label>
-        <label>Kata sandi<input id="loginPassword" type="password" required minlength="6" /></label>
-        <button class="btn primary" type="submit">Masuk</button>
-      </form>
-      <div class="demo-note">
-        <strong>Siswa baru:</strong> gunakan link pendaftaran unik yang diberikan administrator. Akun aktif setelah diverifikasi.
+      <div class="login-card">
+        <div class="brand-block">
+          <img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
+          <h1>E-Jurnal PKL</h1>
+          <p>SMK Kehutanan Rimba Bahari Sumedang</p>
+        </div>
+        <form id="loginForm" class="form-stack">
+          <label>Email<input id="loginEmail" type="email" required placeholder="nama@sekolah.sch.id" /></label>
+          <label>Kata sandi<input id="loginPassword" type="password" required minlength="6" /></label>
+          <button class="btn primary login-submit" type="submit">Masuk ke E-Jurnal</button>
+        </form>
+        <div class="forgot-password-row">
+          <button class="forgot-password-btn" id="forgotPasswordBtn" type="button">Lupa kata sandi?</button>
+          <span>Reset kata sandi hanya dilakukan oleh administrator.</span>
+        </div>
+        <div class="student-register-entry">
+          <div><strong>Belum memiliki akun?</strong><span>Siswa aktif dapat mendaftar sendiri. Administrator hanya melakukan verifikasi.</span></div>
+          <a class="btn secondary register-entry-btn" href="/?register=student">Daftar sebagai Siswa Baru</a>
+        </div>
+        <div class="demo-note">
+          Akun siswa belum dapat digunakan sebelum administrator sekolah menyetujui pendaftaran.
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="publicRegisterView" class="login-page hidden">
+    <div class="public-registration-shell">
+      <div class="public-registration-intro">
+        <span class="login-kicker">PENDAFTARAN MANDIRI SISWA</span>
+        <h2>Satu formulir untuk memulai E-Jurnal PKL.</h2>
+        <p>Isi data sesuai identitas sekolah. Administrator akan mencocokkan NIS, nama, dan kelas untuk memastikan Anda benar-benar siswa aktif.</p>
+        <div class="registration-steps">
+          <span><b>1</b> Isi identitas siswa</span>
+          <span><b>2</b> Kirim pendaftaran</span>
+          <span><b>3</b> Tunggu verifikasi admin</span>
+        </div>
+      </div>
+      <div class="login-card public-registration-card" id="publicRegistrationCard">
+        <div class="brand-block compact-brand">
+          <img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo sekolah" class="logo" />
+          <h1>Daftar Akun Siswa</h1>
+          <p>Gunakan data yang sama dengan administrasi sekolah.</p>
+        </div>
+        <form id="publicStudentRegistrationForm" class="form-grid public-registration-form">
+          <label>Nama lengkap<input name="full_name" minlength="3" maxlength="120" autocomplete="name" required placeholder="Nama sesuai data sekolah"></label>
+          <label>NIS<input name="nis" minlength="3" maxlength="30" inputmode="numeric" required placeholder="Nomor induk siswa"></label>
+          <label>Kelas<input name="class_name" maxlength="50" required placeholder="Contoh: XI Kehutanan 1"></label>
+          <label>Tempat PKL <span class="optional-label">opsional</span><input name="internship_place" maxlength="200" placeholder="Boleh diisi kemudian oleh admin"></label>
+          <label>Email aktif<input name="email" type="email" maxlength="160" autocomplete="email" required placeholder="nama@email.com"></label>
+          <label>Nomor HP<input name="phone" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="08xxxxxxxxxx"></label>
+          <label>Buat password<input name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+          <label>Ulangi password<input name="confirm_password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+          <label class="registration-honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+          <label class="wide declaration-check"><input name="active_student_confirmed" type="checkbox" value="true" required><span>Saya menyatakan data di atas benar dan saya masih berstatus siswa aktif SMK Kehutanan Rimba Bahari Sumedang.</span></label>
+          <div class="wide registration-actions"><button class="btn primary" id="publicRegistrationSubmit" type="submit">Kirim Pendaftaran</button><a class="btn secondary inline-link" href="/">Kembali ke Login</a></div>
+          <p id="publicRegistrationStatus" class="wide form-help" aria-live="polite"></p>
+        </form>
       </div>
     </div>
   </section>
@@ -35,7 +92,7 @@
   <section id="registerView" class="login-page hidden">
     <div class="login-card" id="registrationCard">
       <div class="brand-block">
-        <img src="/assets/logo-sekolah.png" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
+        <img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
         <h1>Pendaftaran Siswa</h1>
         <p id="registrationStudentName">Memuat data siswa...</p>
         <small id="registrationStudentMeta" class="muted"></small>
@@ -52,21 +109,51 @@
     </div>
   </section>
 
+  <div class="password-help-backdrop hidden" id="passwordHelpBackdrop" role="dialog" aria-modal="true" aria-labelledby="passwordHelpTitle">
+    <div class="password-help-card">
+      <button class="password-help-close" id="passwordHelpClose" type="button" aria-label="Tutup">✕</button>
+      <div class="password-help-icon">🔐</div>
+      <h2 id="passwordHelpTitle">Lupa Kata Sandi</h2>
+      <p>Untuk menjaga keamanan akun sekolah, siswa, guru, dan pembimbing tidak dapat mengatur ulang kata sandi sendiri.</p>
+      <div class="password-help-info">
+        <strong>Hubungi administrator sekolah dan sampaikan:</strong>
+        <span>• Nama lengkap</span>
+        <span>• NIS untuk siswa</span>
+        <span>• Kelas atau jabatan</span>
+        <span>• Email akun E-Jurnal</span>
+      </div>
+      <p class="password-help-note">Administrator akan memeriksa identitas Anda melalui menu <b>Akun Pengguna → Reset Password</b>.</p>
+      <button class="btn primary full" id="passwordHelpOk" type="button">Saya Mengerti</button>
+    </div>
+  </div>
+
   <div id="appView" class="app-shell hidden">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <img src="/assets/logo-sekolah.png" alt="Logo sekolah" />
+        <div class="brand-logo-wrap"><img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo sekolah" /></div>
         <div><strong>E-Jurnal PKL</strong><small>Rimba Bahari Sumedang</small></div>
       </div>
+      <div class="sidebar-caption">MENU UTAMA</div>
       <nav id="navMenu"></nav>
-      <button id="logoutBtn" class="btn ghost full">Keluar</button>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <span class="user-avatar" id="sidebarUserInitials">U</span>
+          <div><strong id="sidebarUserName">Pengguna</strong><small id="sidebarUserRole">Peran</small></div>
+        </div>
+        <button id="logoutBtn" class="btn ghost full"><span>↪</span> Keluar</button>
+      </div>
     </aside>
     <main class="main-area">
       <header class="topbar">
-        <button id="menuToggle" class="icon-btn">☰</button>
-        <div>
+        <button id="menuToggle" class="icon-btn" aria-label="Buka menu">☰</button>
+        <div class="topbar-title">
+          <span id="pageEyebrow">Ringkasan aktivitas dan perkembangan PKL</span>
           <h2 id="pageTitle">Dashboard</h2>
           <p id="userInfo"></p>
+        </div>
+        <div class="topbar-tools">
+          <div class="date-chip"><span>●</span><div><small>Hari ini</small><strong id="topbarDate">—</strong></div></div>
+          <div class="online-chip">Sistem Online</div>
         </div>
       </header>
       <div id="content" class="content"></div>
@@ -74,7 +161,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/config.js?v=4"></script>
+  <script src="/config.js?v=8"></script>
   <script>
     window.addEventListener('error', function (event) {
       const box = document.getElementById('startupError');
@@ -91,6 +178,31 @@
       }
     });
   </script>
-  <script src="/app.js?v=4"></script>
+  <script>
+    (function () {
+      const openButton = document.getElementById('forgotPasswordBtn');
+      const backdrop = document.getElementById('passwordHelpBackdrop');
+      const closeButton = document.getElementById('passwordHelpClose');
+      const okButton = document.getElementById('passwordHelpOk');
+      function openHelp() {
+        backdrop?.classList.remove('hidden');
+        okButton?.focus();
+      }
+      function closeHelp() {
+        backdrop?.classList.add('hidden');
+        openButton?.focus();
+      }
+      openButton?.addEventListener('click', openHelp);
+      closeButton?.addEventListener('click', closeHelp);
+      okButton?.addEventListener('click', closeHelp);
+      backdrop?.addEventListener('click', function (event) {
+        if (event.target === backdrop) closeHelp();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !backdrop?.classList.contains('hidden')) closeHelp();
+      });
+    })();
+  </script>
+  <script src="/app.js?v=8"></script>
 </body>
 </html>

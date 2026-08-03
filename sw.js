@@ -1,18 +1,21 @@
-const CACHE = 'ejurnal-rbs-v4-hotfix';
+const CACHE = 'ejurnal-rbs-v8-admin-password';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=4',
-  '/app.js?v=4',
-  '/config.js?v=4',
+  '/styles.css?v=8',
+  '/app.js?v=8',
+  '/config.js?v=8',
+  '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
-  '/manifest.webmanifest'
+  '/assets/logo-sekolah.svg'
 ];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE).then((cache) =>
+      Promise.allSettled(ASSETS.map((asset) => cache.add(asset)))
+    )
   );
 });
 
@@ -43,8 +46,10 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        }
         return response;
       })
       .catch(() => caches.match(event.request))
