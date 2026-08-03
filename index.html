@@ -6,17 +6,18 @@
   <meta name="theme-color" content="#174C35" />
   <meta name="description" content="E-Jurnal PKL SMK Kehutanan Rimba Bahari Sumedang" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="icon" href="/assets/logo-sekolah.svg" />
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="/assets/logo-sekolah.png" />
+  <link rel="stylesheet" href="/styles.css?v=4" />
   <title>E-Jurnal PKL Rimba Bahari</title>
 </head>
 <body>
   <div id="toast" class="toast"></div>
+  <div id="startupError" hidden style="position:fixed;left:16px;right:16px;top:16px;z-index:9999;background:#fee4e2;color:#912018;border:1px solid #f04438;border-radius:12px;padding:14px;font:600 14px Arial,sans-serif"></div>
 
   <section id="loginView" class="login-page">
     <div class="login-card">
       <div class="brand-block">
-        <img src="/assets/logo-sekolah.svg" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
+        <img src="/assets/logo-sekolah.png" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
         <h1>E-Jurnal PKL</h1>
         <p>SMK Kehutanan Rimba Bahari Sumedang</p>
       </div>
@@ -34,7 +35,7 @@
   <section id="registerView" class="login-page hidden">
     <div class="login-card" id="registrationCard">
       <div class="brand-block">
-        <img src="/assets/logo-sekolah.svg" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
+        <img src="/assets/logo-sekolah.png" alt="Logo SMK Kehutanan Rimba Bahari Sumedang" class="logo" />
         <h1>Pendaftaran Siswa</h1>
         <p id="registrationStudentName">Memuat data siswa...</p>
         <small id="registrationStudentMeta" class="muted"></small>
@@ -54,7 +55,7 @@
   <div id="appView" class="app-shell hidden">
     <aside class="sidebar">
       <div class="sidebar-brand">
-        <img src="/assets/logo-sekolah.svg" alt="Logo sekolah" />
+        <img src="/assets/logo-sekolah.png" alt="Logo sekolah" />
         <div><strong>E-Jurnal PKL</strong><small>Rimba Bahari Sumedang</small></div>
       </div>
       <nav id="navMenu"></nav>
@@ -73,7 +74,23 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/config.js"></script>
-  <script src="/app.js"></script>
+  <script src="/config.js?v=4"></script>
+  <script>
+    window.addEventListener('error', function (event) {
+      const box = document.getElementById('startupError');
+      if (box) {
+        box.hidden = false;
+        box.textContent = 'Aplikasi gagal dimuat: ' + (event.message || 'kesalahan JavaScript');
+      }
+    });
+    window.addEventListener('unhandledrejection', function (event) {
+      const box = document.getElementById('startupError');
+      if (box) {
+        box.hidden = false;
+        box.textContent = 'Aplikasi gagal dimuat: ' + ((event.reason && event.reason.message) || event.reason || 'kesalahan proses');
+      }
+    });
+  </script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

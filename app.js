@@ -422,7 +422,7 @@ async function showRegistrationView(token) {
   $('#registerView').classList.remove('hidden');
   const info = await publicApi('/api/register-student', { action: 'info', token });
   if (info.error) {
-    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.svg" alt="Logo sekolah" class="logo"><h1>Link Tidak Dapat Digunakan</h1><p>${esc(info.error)}</p><a class="btn secondary inline-link" href="/">Kembali ke halaman login</a></div>`;
+    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.png" alt="Logo sekolah" class="logo"><h1>Link Tidak Dapat Digunakan</h1><p>${esc(info.error)}</p><a class="btn secondary inline-link" href="/">Kembali ke halaman login</a></div>`;
     return;
   }
 
@@ -449,7 +449,7 @@ async function showRegistrationView(token) {
       $('#registrationStatus').textContent = result.error;
       return toast(result.error);
     }
-    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.svg" alt="Logo sekolah" class="logo"><h1>Pendaftaran Berhasil</h1><p>Akun Anda sudah dibuat dan sedang menunggu verifikasi administrator. Anda dapat login setelah administrator mengaktifkan akun.</p><a class="btn primary inline-link" href="/">Kembali ke halaman login</a></div>`;
+    $('#registrationCard').innerHTML = `<div class="brand-block"><img src="/assets/logo-sekolah.png" alt="Logo sekolah" class="logo"><h1>Pendaftaran Berhasil</h1><p>Akun Anda sudah dibuat dan sedang menunggu verifikasi administrator. Anda dapat login setelah administrator mengaktifkan akun.</p><a class="btn primary inline-link" href="/">Kembali ke halaman login</a></div>`;
   };
 }
 

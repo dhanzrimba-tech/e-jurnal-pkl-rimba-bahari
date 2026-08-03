@@ -1,0 +1,22 @@
+HOTFIX LOGO + HALAMAN PUTIH
+
+JANGAN ubah Supabase dan jangan hapus config.js.
+
+1. Buka repository GitHub, pada folder paling utama/root.
+2. Ganti/unggah 5 file ini dari folder hotfix:
+   - index.html
+   - app.js
+   - styles.css
+   - sw.js
+   - manifest.webmanifest
+3. Pastikan file berikut tetap ada:
+   assets/logo-sekolah.png
+4. Commit changes.
+5. Tunggu deployment Vercel terbaru berstatus Ready/Production.
+6. Buka aplikasi, tekan F12 > Application > Service Workers > Unregister.
+7. Application > Storage > Clear site data.
+8. Tutup tab, buka ulang alamat Production.
+
+PENTING:
+- Unggah file ke root repository, jangan ke dalam folder api.
+- Jangan unggah folder pembungkus ejurnal-hotfix-logo-blank.
