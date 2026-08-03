@@ -17,11 +17,13 @@ export default async function handler(req, res) {
 
   try {
     const { admin } = clients();
-    const [profileProbe, journalProbe, inviteProbe, bucketProbe] = await Promise.all([
+    const [profileProbe, journalProbe, inviteProbe, bucketProbe, deletionProbe, accountDeletionProbe] = await Promise.all([
       admin.from('profiles').select('registration_status').limit(1),
       admin.from('daily_journals').select('photo_paths').limit(1),
       admin.from('student_registration_invites').select('id').limit(1),
       admin.storage.getBucket('journal-photos'),
+      admin.from('journal_deletion_requests').select('id').limit(1),
+      admin.from('account_deletion_requests').select('id').limit(1),
     ]);
 
     const features = {
@@ -29,6 +31,8 @@ export default async function handler(req, res) {
       journal_photo_column: !journalProbe.error,
       registration_table: !inviteProbe.error,
       photo_bucket: !bucketProbe.error,
+      approved_journal_deletion: !deletionProbe.error,
+      account_deletion_approval: !accountDeletionProbe.error,
     };
     const ready = Object.values(features).every(Boolean);
 

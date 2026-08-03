@@ -76,6 +76,42 @@ export function clients() {
   };
 }
 
+export async function requireActiveUser(req, allowedRoles = []) {
+  const token = bearerToken(req);
+  const { anon, admin } = clients();
+
+  const { data: authData, error: authError } = await anon.auth.getUser(token);
+  if (authError || !authData?.user) {
+    const error = new Error('Sesi sudah tidak valid. Silakan masuk kembali.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('id, role, is_active, full_name')
+    .eq('id', authData.user.id)
+    .single();
+
+  if (profileError || !profile) {
+    const error = new Error('Profil pengguna tidak ditemukan.');
+    error.statusCode = 403;
+    throw error;
+  }
+  if (profile.is_active === false) {
+    const error = new Error('Akun pengguna sedang tidak aktif.');
+    error.statusCode = 403;
+    throw error;
+  }
+  if (allowedRoles.length && !allowedRoles.includes(profile.role)) {
+    const error = new Error('Anda tidak memiliki izin untuk melakukan tindakan ini.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return { admin, actor: authData.user, profile };
+}
+
 export async function requireActiveAdmin(req) {
   const token = bearerToken(req);
   const { anon, admin } = clients();
@@ -89,7 +125,7 @@ export async function requireActiveAdmin(req) {
 
   const { data: profile, error: profileError } = await admin
     .from('profiles')
-    .select('id, role, is_active')
+    .select('id, role, is_active, full_name')
     .eq('id', authData.user.id)
     .single();
 
@@ -124,8 +160,8 @@ export function publicError(error) {
   if (normalized.includes('invalid email')) return 'Format email tidak valid.';
   if (normalized.includes('password')) return 'Password tidak memenuhi kebijakan keamanan Supabase.';
   if (normalized.includes('rate limit')) return 'Terlalu banyak permintaan. Coba lagi beberapa saat.';
-  if (normalized.includes('student_registration_invites') || normalized.includes('registration_status') || normalized.includes('photo_paths')) {
-    return 'Upgrade database belum dijalankan. Jalankan database/upgrade-photo-registration.sql melalui SQL Editor Supabase.';
+  if (normalized.includes('student_registration_invites') || normalized.includes('registration_status') || normalized.includes('photo_paths') || normalized.includes('journal_deletion_requests') || normalized.includes('approve_journal_deletion_request') || normalized.includes('account_deletion_requests')) {
+    return 'Upgrade database belum lengkap. Jalankan SQL upgrade yang sesuai, termasuk enable-account-deletion-approval.sql, melalui SQL Editor Supabase.';
   }
   if (normalized.includes('bucket not found') || normalized.includes('journal-photos')) {
     return 'Penyimpanan foto belum siap. Jalankan database/upgrade-photo-registration.sql melalui SQL Editor Supabase.';
