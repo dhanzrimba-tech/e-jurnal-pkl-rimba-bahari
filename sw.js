@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v14-direct-account-delete';
+const CACHE = 'ejurnal-rbs-v15-session-refresh';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=14',
-  '/app.js?v=14',
-  '/config.js?v=14',
+  '/styles.css?v=15',
+  '/app.js?v=15',
+  '/config.js?v=15',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

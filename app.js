@@ -1243,10 +1243,68 @@ function downloadCsv(rows) {
   URL.revokeObjectURL(anchor.href);
 }
 
+async function getFreshSession({ forceRefresh = false } = {}) {
+  if (!sb) return null;
+
+  const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+  if (sessionError) {
+    console.error('Gagal membaca sesi:', sessionError);
+    return null;
+  }
+
+  let session = sessionData?.session || null;
+  if (!session) {
+    state.session = null;
+    return null;
+  }
+
+  const expiresAtMs = Number(session.expires_at || 0) * 1000;
+  const expiresSoon = !expiresAtMs || (expiresAtMs - Date.now()) < 90_000;
+  if (forceRefresh || expiresSoon) {
+    const { data: refreshData, error: refreshError } = await sb.auth.refreshSession();
+    if (refreshError || !refreshData?.session) {
+      console.error('Gagal memperbarui sesi:', refreshError);
+      state.session = null;
+      return null;
+    }
+    session = refreshData.session;
+  }
+
+  state.session = session;
+  return session;
+}
+
+function isSessionError(result) {
+  const status = Number(result?.__status || 0);
+  const message = readableMessage(result?.error, '').toLowerCase();
+  return status === 401
+    || message.includes('sesi sudah tidak valid')
+    || message.includes('sesi login tidak ditemukan')
+    || message.includes('jwt expired')
+    || message.includes('invalid jwt')
+    || message.includes('token has expired');
+}
+
 async function api(url, body, { timeout = 20000 } = {}) {
-  const token = state.session?.access_token;
-  if (!token) return { error: 'Sesi login berakhir. Silakan masuk kembali.' };
-  return requestJson(url, body, { timeout, token });
+  let session = await getFreshSession();
+  if (!session?.access_token) {
+    return { error: 'Sesi login berakhir. Silakan masuk kembali.', __status: 401 };
+  }
+
+  let result = await requestJson(url, body, { timeout, token: session.access_token });
+  if (isSessionError(result)) {
+    session = await getFreshSession({ forceRefresh: true });
+    if (session?.access_token) {
+      result = await requestJson(url, body, { timeout, token: session.access_token });
+    }
+  }
+
+  if (isSessionError(result)) {
+    await sb.auth.signOut().catch(() => {});
+    showLogin();
+    result.error = 'Sesi login telah berakhir. Silakan masuk kembali, lalu ulangi tindakan.';
+  }
+  return result;
 }
 
 async function publicApi(url, body, { timeout = 20000 } = {}) {
@@ -1279,6 +1337,7 @@ async function requestJson(url, body, { timeout, token = null }) {
       result.error = readableMessage(result.error, `Permintaan gagal (${response.status})`);
     }
     if (!response.ok && !result.error) result.error = `Permintaan gagal (${response.status})`;
+    if (result && typeof result === 'object') result.__status = response.status;
     return result;
   } catch (error) {
     console.error('API request failed:', error);
