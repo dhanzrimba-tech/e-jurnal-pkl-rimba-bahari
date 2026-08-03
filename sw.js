@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v12-journal-delete-error-hotfix';
+const CACHE = 'ejurnal-rbs-v13-review-delete-endpoint-hotfix';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=12',
-  '/app.js?v=12',
-  '/config.js?v=12',
+  '/styles.css?v=13',
+  '/app.js?v=13',
+  '/config.js?v=13',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

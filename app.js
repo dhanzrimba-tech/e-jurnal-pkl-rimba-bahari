@@ -1382,7 +1382,14 @@ async function requestJson(url, body, { timeout, token = null }) {
       try { result = JSON.parse(text); }
       catch { result = { error: `Respons server tidak valid (${response.status}).` }; }
     }
-    if (result && typeof result === 'object' && result.error) {
+    if (response.status === 404) {
+      const endpoint = String(url || '');
+      if (endpoint.includes('/api/review-journal-deletion')) {
+        result.error = 'API persetujuan hapus jurnal belum terpasang. Unggah file api/review-journal-deletion.js ke folder api di GitHub, lalu tunggu deployment Vercel selesai.';
+      } else {
+        result.error = `Endpoint ${endpoint} tidak ditemukan pada deployment Vercel terbaru.`;
+      }
+    } else if (result && typeof result === 'object' && result.error) {
       result.error = readableMessage(result.error, `Permintaan gagal (${response.status})`);
     }
     if (!response.ok && !result.error) result.error = `Permintaan gagal (${response.status})`;
