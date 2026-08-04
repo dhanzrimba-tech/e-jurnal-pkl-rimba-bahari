@@ -905,19 +905,19 @@ async function renderJournals() {
     : `<div class="dashboard-filter-bar"><div><span>Filter jurnal aktif</span><strong>${journalFilterLabels[journalFilter] || 'Rekap jurnal'}</strong><small>${visibleJournals.length} data ditemukan</small></div><button type="button" class="btn secondary" id="clearDashboardJournalFilter">Tampilkan Semua Jurnal</button></div>`;
 
   const journalSummaryCards = [
-    { key: 'all', count: state.journals.length, label: 'Semua jurnal' },
-    { key: 'draft', count: draftCount, label: 'Draf' },
-    { key: 'submitted', count: pendingCount, label: 'Menunggu' },
-    { key: 'approved', count: approvedCount, label: 'Disetujui' },
+    { key: 'all', count: state.journals.length, label: 'Semua jurnal', icon: '▤' },
+    { key: 'draft', count: draftCount, label: 'Draf', icon: '✎' },
+    { key: 'submitted', count: pendingCount, label: 'Menunggu', icon: '⌛' },
+    { key: 'approved', count: approvedCount, label: 'Disetujui', icon: '✓' },
     canAdd
-      ? { key: 'pending_deletion', count: pendingDeletionCount, label: 'Menunggu hapus' }
-      : { key: 'revision', count: revisionCount, label: 'Perlu perbaikan' },
+      ? { key: 'pending_deletion', count: pendingDeletionCount, label: 'Menunggu hapus', icon: '⌫' }
+      : { key: 'revision', count: revisionCount, label: 'Perlu perbaikan', icon: '!' },
   ];
 
   $('#content').innerHTML = `<div class="page-intro"><div><span class="section-kicker">DOKUMENTASI PEMBELAJARAN</span><h3>${canAdd ? 'Jurnal Harian Saya' : 'Daftar Jurnal Siswa'}</h3><p>${canAdd ? 'Catat kegiatan, hasil belajar, kendala, refleksi, dan foto dokumentasi kegiatan PKL.' : 'Pantau catatan kegiatan dan perkembangan pembelajaran siswa selama PKL.'}</p></div>${canAdd ? '<button class="btn primary btn-emphasis" id="addJournalBtn">＋ Isi Jurnal Baru</button>' : ''}</div>
     ${featureWarning}
     ${activeFilterBar}
-    <div class="journal-summary clickable-summary">${journalSummaryCards.map((card) => `<button type="button" class="dashboard-link-card journal-filter-card ${journalFilter === card.key ? 'is-active' : ''}" data-journal-filter="${card.key}" aria-label="Tampilkan ${card.label}"><strong>${card.count}</strong><span>${card.label}</span></button>`).join('')}</div>
+    <div class="journal-summary clickable-summary">${journalSummaryCards.map((card) => `<button type="button" class="dashboard-link-card journal-filter-card status-${card.key} ${journalFilter === card.key ? 'is-active' : ''}" data-journal-filter="${card.key}" aria-label="Tampilkan ${card.label}" aria-pressed="${journalFilter === card.key}"><span class="journal-card-icon" aria-hidden="true">${card.icon}</span><span class="journal-card-copy"><strong>${card.count}</strong><span>${card.label}</span></span><span class="journal-card-active-label">Aktif</span></button>`).join('')}</div>
     ${renderTeacherDeletionPanel()}
     <div class="data-panel"><div class="panel-title"><div><h4>Riwayat Jurnal</h4><p>Jurnal terbaru ditampilkan paling atas.</p></div>${canAdd ? '<span class="policy-note">Draf/revisi dapat dihapus langsung. Jurnal disetujui memerlukan konfirmasi guru.</span>' : ''}</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Foto</th><th>Tahapan</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${visibleJournals.map((journal) => {
       const canModify = canAdd && ['draft', 'revision'].includes(journal.status);
