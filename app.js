@@ -41,6 +41,7 @@ const state = {
   attendance: [],
   deletionRequests: [],
   deletionFeatureReady: true,
+  dashboardJournalFilter: 'all',
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -221,7 +222,13 @@ function renderNav() {
   $('#navMenu').innerHTML = items.map(([id, label]) =>
     `<button class="nav-btn ${state.page === id ? 'active' : ''}" data-page="${id}"><span class="nav-icon">${navIcons[id] || ''}</span><span>${label}</span></button>`).join('');
   document.querySelectorAll('.nav-btn').forEach((button) => {
-    button.onclick = () => navigate(button.dataset.page);
+    button.onclick = () => {
+      const targetPage = button.dataset.page;
+      if (targetPage === 'journals' || targetPage === 'my-journal') {
+        state.dashboardJournalFilter = 'all';
+      }
+      navigate(targetPage);
+    };
   });
 }
 
@@ -281,11 +288,11 @@ async function renderDashboard() {
     <div class="hero-copy"><span class="hero-kicker">${esc(roleCopy[0])}</span><h2>Selamat datang, ${firstName}.</h2><p>${esc(roleCopy[1])}</p><div class="hero-actions">${quickAction}</div></div>
     <div class="hero-visual"><div class="hero-ring"></div><img src="/assets/logo-sekolah.png" onerror="this.onerror=null;this.src='/assets/logo-sekolah.svg'" alt="Logo sekolah"><span>SMK Kehutanan<br>Rimba Bahari</span></div>
   </section>
-  <section class="metric-grid">
-    <article class="metric-card"><span class="metric-icon forest">${navIcons.journals}</span><div><small>Total Jurnal</small><strong>${total}</strong><p>Catatan kegiatan tersimpan</p></div></article>
-    <article class="metric-card"><span class="metric-icon success">✓</span><div><small>Disetujui</small><strong>${approved}</strong><p>Jurnal tervalidasi</p></div></article>
-    <article class="metric-card"><span class="metric-icon warning">⌛</span><div><small>Menunggu</small><strong>${pending}</strong><p>Perlu validasi pembimbing</p></div></article>
-    <article class="metric-card"><span class="metric-icon blue">${navIcons.attendance}</span><div><small>Presensi</small><strong>${attendance.count || 0}</strong><p>Data kehadiran tercatat</p></div></article>
+  <section class="metric-grid" aria-label="Akses cepat rekap dashboard">
+    <button type="button" class="metric-card dashboard-link-card" id="metricTotalJournals" aria-label="Buka seluruh rekap jurnal"><span class="metric-icon forest">${navIcons.journals}</span><div><small>Total Jurnal</small><strong>${total}</strong><p>Catatan kegiatan tersimpan</p><span class="metric-open-hint">Buka rekap jurnal</span></div></button>
+    <button type="button" class="metric-card dashboard-link-card" id="metricApprovedJournals" aria-label="Buka rekap jurnal yang disetujui"><span class="metric-icon success">✓</span><div><small>Disetujui</small><strong>${approved}</strong><p>Jurnal tervalidasi</p><span class="metric-open-hint">Lihat jurnal disetujui</span></div></button>
+    <button type="button" class="metric-card dashboard-link-card" id="metricPendingJournals" aria-label="Buka rekap jurnal yang menunggu validasi"><span class="metric-icon warning">⌛</span><div><small>Menunggu</small><strong>${pending}</strong><p>Perlu validasi pembimbing</p><span class="metric-open-hint">Lihat jurnal menunggu</span></div></button>
+    <button type="button" class="metric-card dashboard-link-card" id="metricAttendance" aria-label="Buka rekap presensi"><span class="metric-icon blue">${navIcons.attendance}</span><div><small>Presensi</small><strong>${attendance.count || 0}</strong><p>Data kehadiran tercatat</p><span class="metric-open-hint">Buka rekap presensi</span></div></button>
   </section>
   <section class="dashboard-layout">
     <article class="card progress-card"><div class="card-heading"><div><span class="section-kicker">TARGET PEMBELAJARAN</span><h3>Progres PKL 40 Hari</h3></div><strong class="progress-number">${progress}%</strong></div><div class="progress progress-large"><span style="width:${progress}%"></span></div><div class="progress-meta"><span>${approved} jurnal disetujui</span><span>${Math.max(0, 40 - approved)} jurnal menuju target</span></div></article>
@@ -297,6 +304,17 @@ async function renderDashboard() {
   $('#quickRegistration')?.addEventListener('click', () => navigate('registrations'));
   $('#quickUsers')?.addEventListener('click', () => navigate('users'));
   $('#quickMonitoring')?.addEventListener('click', () => navigate('journals'));
+
+  const journalPage = role === 'student' ? 'my-journal' : 'journals';
+  const attendancePage = role === 'student' ? 'my-attendance' : 'attendance';
+  const openJournalRecap = (filter = 'all') => {
+    state.dashboardJournalFilter = filter;
+    navigate(journalPage);
+  };
+  $('#metricTotalJournals')?.addEventListener('click', () => openJournalRecap('all'));
+  $('#metricApprovedJournals')?.addEventListener('click', () => openJournalRecap('approved'));
+  $('#metricPendingJournals')?.addEventListener('click', () => openJournalRecap('submitted'));
+  $('#metricAttendance')?.addEventListener('click', () => navigate(attendancePage));
 }
 
 async function renderUsers() {
@@ -307,27 +325,66 @@ async function renderUsers() {
   if (error) throw error;
 
   const users = data || [];
-  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">MANAJEMEN PENGGUNA</span><h3>Akun Pengguna</h3><p>Administrator dapat mengelola dan menghapus langsung akun nonadministrator.</p></div><button class="btn primary" id="addUserBtn">Tambah Akun</button></div>
+  const userCounts = {
+    total: users.length,
+    student: users.filter((item) => item.role === 'student').length,
+    teacher: users.filter((item) => item.role === 'teacher').length,
+    field_supervisor: users.filter((item) => item.role === 'field_supervisor').length,
+    admin: users.filter((item) => item.role === 'admin').length,
+  };
+
+  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">MANAJEMEN PENGGUNA</span><h3>Akun Pengguna</h3><p>Administrator dapat melihat jumlah akun, mengelola profil, serta menghapus langsung akun nonadministrator.</p></div><button class="btn primary" id="addUserBtn">Tambah Akun</button></div>
+    <div class="account-summary-grid" aria-label="Ringkasan jumlah akun pengguna">
+      <button type="button" class="account-summary-card total active" data-role-summary="" aria-label="Tampilkan semua akun">
+        <span class="account-summary-icon">${navIcons.users}</span><span><small>Total Akun</small><strong>${userCounts.total}</strong><em>Seluruh pengguna terdaftar</em></span>
+      </button>
+      <button type="button" class="account-summary-card student" data-role-summary="student" aria-label="Tampilkan akun siswa">
+        <span class="account-summary-icon">S</span><span><small>Siswa</small><strong>${userCounts.student}</strong><em>Akun peserta didik</em></span>
+      </button>
+      <button type="button" class="account-summary-card teacher" data-role-summary="teacher" aria-label="Tampilkan akun guru pembimbing">
+        <span class="account-summary-icon">G</span><span><small>Guru Pembimbing</small><strong>${userCounts.teacher}</strong><em>Akun pembimbing sekolah</em></span>
+      </button>
+      <button type="button" class="account-summary-card supervisor" data-role-summary="field_supervisor" aria-label="Tampilkan akun pembimbing lapangan">
+        <span class="account-summary-icon">PL</span><span><small>Pembimbing Lapangan</small><strong>${userCounts.field_supervisor}</strong><em>Akun pembimbing lokasi PKL</em></span>
+      </button>
+      <button type="button" class="account-summary-card admin" data-role-summary="admin" aria-label="Tampilkan akun administrator">
+        <span class="account-summary-icon">A</span><span><small>Administrator</small><strong>${userCounts.admin}</strong><em>Akun pengelola sistem</em></span>
+      </button>
+    </div>
     <div class="info-strip account-delete-direct-note"><strong>Penghapusan langsung oleh administrator.</strong> Alasan wajib diisi dan tindakan tidak dapat dibatalkan. Akun administrator tetap dilindungi.</div>
-    <div class="toolbar"><input id="userSearch" placeholder="Cari nama atau email..."><select id="roleFilter"><option value="">Semua peran</option><option value="student">Siswa</option><option value="teacher">Guru</option><option value="field_supervisor">Pembimbing lapangan</option><option value="admin">Administrator</option></select></div>
-    <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="userRows"></tbody></table></div>`;
+    <div class="toolbar user-toolbar"><input id="userSearch" placeholder="Cari nama atau email..."><select id="roleFilter"><option value="">Semua peran</option><option value="student">Siswa</option><option value="teacher">Guru</option><option value="field_supervisor">Pembimbing lapangan</option><option value="admin">Administrator</option></select></div>
+    <div class="user-list-caption"><span id="userListCount">Menampilkan ${users.length} akun</span><small>Nomor urut menyesuaikan hasil pencarian dan filter.</small></div>
+    <div class="table-wrap user-table-wrap"><table><thead><tr><th class="number-column">No.</th><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="userRows"></tbody></table></div>`;
 
   const draw = () => {
     const query = $('#userSearch').value.toLowerCase();
     const role = $('#roleFilter').value;
-    $('#userRows').innerHTML = users.filter((item) =>
-      (!role || item.role === role) && `${item.full_name} ${item.email}`.toLowerCase().includes(query))
-      .map((item) => {
-        const deletionAction = item.role === 'admin'
-          ? '<span class="protected-account">Dilindungi</span>'
-          : `<button class="btn danger delete-user" data-id="${item.id}">Hapus Akun</button>`;
-        return `<tr><td>${esc(item.full_name)}</td><td>${esc(item.email)}</td><td>${esc(roles[item.role] || item.role)}</td><td>${userStatusBadge(item)}</td><td><div class="actions"><button class="btn warn reset-pass" data-id="${item.id}" data-name="${esc(item.full_name)}">Reset Password</button><button class="btn secondary edit-profile" data-id="${item.id}">Edit</button>${deletionAction}</div></td></tr>`;
-      }).join('') || '<tr><td colspan="5" class="empty">Tidak ada data.</td></tr>';
+    const filteredUsers = users.filter((item) =>
+      (!role || item.role === role) && `${item.full_name} ${item.email}`.toLowerCase().includes(query));
+
+    $('#userRows').innerHTML = filteredUsers.map((item, index) => {
+      const deletionAction = item.role === 'admin'
+        ? '<span class="protected-account">Dilindungi</span>'
+        : `<button class="btn danger delete-user" data-id="${item.id}">Hapus Akun</button>`;
+      return `<tr><td class="row-number">${index + 1}</td><td>${esc(item.full_name)}</td><td>${esc(item.email)}</td><td>${esc(roles[item.role] || item.role)}</td><td>${userStatusBadge(item)}</td><td><div class="actions"><button class="btn warn reset-pass" data-id="${item.id}" data-name="${esc(item.full_name)}">Reset Password</button><button class="btn secondary edit-profile" data-id="${item.id}">Edit</button>${deletionAction}</div></td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="empty">Tidak ada data yang sesuai dengan pencarian atau filter.</td></tr>';
+
+    const filterLabel = role ? (roles[role] || role) : 'semua peran';
+    $('#userListCount').textContent = `Menampilkan ${filteredUsers.length} dari ${users.length} akun · ${filterLabel}`;
+    document.querySelectorAll('.account-summary-card').forEach((card) => {
+      card.classList.toggle('active', card.dataset.roleSummary === role);
+    });
     bindUserActions(users);
   };
 
   $('#userSearch').oninput = draw;
   $('#roleFilter').onchange = draw;
+  document.querySelectorAll('.account-summary-card').forEach((card) => {
+    card.onclick = () => {
+      $('#roleFilter').value = card.dataset.roleSummary || '';
+      draw();
+    };
+  });
   $('#addUserBtn').onclick = () => openUserModal();
   draw();
 }
@@ -826,9 +883,22 @@ async function renderJournals() {
   const featureWarning = !state.deletionFeatureReady
     ? '<div class="feature-warning"><strong>Fitur persetujuan penghapusan belum aktif.</strong> Jalankan SQL <code>enable-approved-journal-deletion.sql</code> di Supabase.</div>'
     : '';
+  const journalFilter = state.dashboardJournalFilter || 'all';
+  const journalFilterLabels = {
+    all: 'Semua jurnal',
+    approved: 'Jurnal disetujui',
+    submitted: 'Jurnal menunggu validasi',
+  };
+  const visibleJournals = journalFilter === 'all'
+    ? state.journals
+    : state.journals.filter((item) => item.status === journalFilter);
+  const activeFilterBar = journalFilter === 'all'
+    ? ''
+    : `<div class="dashboard-filter-bar"><div><span>Filter dari dashboard</span><strong>${journalFilterLabels[journalFilter] || 'Rekap jurnal'}</strong><small>${visibleJournals.length} data ditemukan</small></div><button type="button" class="btn secondary" id="clearDashboardJournalFilter">Tampilkan Semua Jurnal</button></div>`;
 
   $('#content').innerHTML = `<div class="page-intro"><div><span class="section-kicker">DOKUMENTASI PEMBELAJARAN</span><h3>${canAdd ? 'Jurnal Harian Saya' : 'Daftar Jurnal Siswa'}</h3><p>${canAdd ? 'Catat kegiatan, hasil belajar, kendala, refleksi, dan foto dokumentasi kegiatan PKL.' : 'Pantau catatan kegiatan dan perkembangan pembelajaran siswa selama PKL.'}</p></div>${canAdd ? '<button class="btn primary btn-emphasis" id="addJournalBtn">＋ Isi Jurnal Baru</button>' : ''}</div>
     ${featureWarning}
+    ${activeFilterBar}
     <div class="journal-summary">
       <div><strong>${state.journals.length}</strong><span>Semua jurnal</span></div>
       <div><strong>${draftCount}</strong><span>Draf</span></div>
@@ -837,7 +907,7 @@ async function renderJournals() {
       <div><strong>${canAdd ? pendingDeletionCount : revisionCount}</strong><span>${canAdd ? 'Menunggu hapus' : 'Perlu perbaikan'}</span></div>
     </div>
     ${renderTeacherDeletionPanel()}
-    <div class="data-panel"><div class="panel-title"><div><h4>Riwayat Jurnal</h4><p>Jurnal terbaru ditampilkan paling atas.</p></div>${canAdd ? '<span class="policy-note">Draf/revisi dapat dihapus langsung. Jurnal disetujui memerlukan konfirmasi guru.</span>' : ''}</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Foto</th><th>Tahapan</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${state.journals.map((journal) => {
+    <div class="data-panel"><div class="panel-title"><div><h4>Riwayat Jurnal</h4><p>Jurnal terbaru ditampilkan paling atas.</p></div>${canAdd ? '<span class="policy-note">Draf/revisi dapat dihapus langsung. Jurnal disetujui memerlukan konfirmasi guru.</span>' : ''}</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Foto</th><th>Tahapan</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${visibleJournals.map((journal) => {
       const canModify = canAdd && ['draft', 'revision'].includes(journal.status);
       const canDelete = canAdd && REMOVABLE_JOURNAL_STATUSES.includes(journal.status);
       const deletionRequest = canAdd ? latestDeletionRequest(journal.id) : null;
@@ -849,8 +919,12 @@ async function renderJournals() {
           ? '<span class="mini-status rejected">Permintaan sebelumnya ditolak</span>'
           : '';
       return `<tr><td><span class="date-cell">${esc(journal.journal_date)}</span></td><td>${esc(journal.student?.full_name || state.profile.full_name)}</td><td><strong class="activity-title">${esc(journal.activity_title)}</strong><small class="activity-location">${esc(journal.location || '-')}</small>${requestState}</td><td>${(journal.photo_paths || []).length ? `<span class="photo-count">▣ ${journal.photo_paths.length}</span>` : '<span class="muted">—</span>'}</td><td><span class="stage-text">${esc((journal.activity_stages || []).join(', ') || '-')}</span></td><td>${statusBadge(journal.status)}</td><td><div class="actions">${canModify ? `<button class="btn secondary edit-journal" data-id="${journal.id}">Edit</button>` : ''}${!canAdd && journal.status === 'submitted' ? `<button class="btn primary validate-journal" data-id="${journal.id}">Validasi</button>` : ''}<button class="btn secondary view-journal" data-id="${journal.id}">Lihat</button>${canDelete ? `<button class="btn danger delete-journal" data-id="${journal.id}">Hapus</button>` : ''}${canRequestApprovedDeletion ? `<button class="btn warn request-delete-journal" data-id="${journal.id}">${requestButtonLabel}</button>` : ''}</div></td></tr>`;
-    }).join('') || '<tr><td colspan="7" class="empty"><div class="empty-state"><span>▤</span><strong>Belum ada jurnal</strong><p>Mulai dokumentasikan kegiatan PKL Anda.</p></div></td></tr>'}</tbody></table></div></div>
+    }).join('') || `<tr><td colspan="7" class="empty"><div class="empty-state"><span>▤</span><strong>${journalFilter === 'all' ? 'Belum ada jurnal' : 'Tidak ada jurnal pada rekap ini'}</strong><p>${journalFilter === 'all' ? 'Mulai dokumentasikan kegiatan PKL Anda.' : 'Gunakan tombol Tampilkan Semua Jurnal untuk kembali ke seluruh data.'}</p></div></td></tr>`}</tbody></table></div></div>
     ${renderStudentDeletionHistory()}`;
+  $('#clearDashboardJournalFilter')?.addEventListener('click', async () => {
+    state.dashboardJournalFilter = 'all';
+    await renderJournals();
+  });
   if (canAdd) $('#addJournalBtn').onclick = () => openJournalModal();
   document.querySelectorAll('.edit-journal').forEach((button) => {
     button.onclick = () => openJournalModal(state.journals.find((item) => item.id === button.dataset.id));
@@ -987,7 +1061,7 @@ async function openJournalModal(journal = null) {
   let selectedFiles = [];
   const existingUrls = await signedPhotoUrls(existingPaths);
 
-  modal(journal ? 'Edit Jurnal' : 'Isi Jurnal Harian', `<form id="journalForm" class="form-grid"><label>Tanggal<input name="journal_date" type="date" value="${journal?.journal_date || new Date().toISOString().slice(0, 10)}" required></label><label>Jam kegiatan<input name="work_hours" type="number" min="1" max="12" value="${journal?.work_hours || 7}"></label><label>Lokasi<input name="location" value="${esc(journal?.location || '')}" required></label><label>Cuaca<input name="weather" value="${esc(journal?.weather || '')}"></label><label class="wide">Judul kegiatan<input name="activity_title" value="${esc(journal?.activity_title || '')}" required></label><label class="wide">Uraian kegiatan<textarea name="description" required>${esc(journal?.description || '')}</textarea></label><div class="wide"><strong>Tahapan Kegiatan </strong><div class="check-grid">${checks}</div></div><label class="wide">Pengetahuan/keterampilan<textarea name="learning">${esc(journal?.learning || '')}</textarea></label><label class="wide">Kendala dan solusi<textarea name="obstacles">${esc(journal?.obstacles || '')}</textarea></label><label class="wide">Refleksi<textarea name="reflection">${esc(journal?.reflection || '')}</textarea></label>
+  modal(journal ? 'Edit Jurnal' : 'Isi Jurnal Harian', `<form id="journalForm" class="form-grid"><label>Tanggal<input name="journal_date" type="date" value="${journal?.journal_date || new Date().toISOString().slice(0, 10)}" required></label><label>Jam kegiatan<input name="work_hours" type="number" min="1" max="12" value="${journal?.work_hours || 7}"></label><label>Lokasi<input name="location" value="${esc(journal?.location || '')}" required></label><label>Cuaca<input name="weather" value="${esc(journal?.weather || '')}"></label><label class="wide">Judul kegiatan<input name="activity_title" value="${esc(journal?.activity_title || '')}" required></label><label class="wide">Uraian kegiatan<textarea name="description" required>${esc(journal?.description || '')}</textarea></label><div class="wide"><strong>Tahapan Kegiatan</strong><div class="check-grid">${checks}</div></div><label class="wide">Pengetahuan/keterampilan<textarea name="learning">${esc(journal?.learning || '')}</textarea></label><label class="wide">Kendala dan solusi<textarea name="obstacles">${esc(journal?.obstacles || '')}</textarea></label><label class="wide">Refleksi<textarea name="reflection">${esc(journal?.reflection || '')}</textarea></label>
     <div class="wide photo-field"><strong>Dokumentasi Foto (maksimal ${MAX_JOURNAL_PHOTOS})</strong><p class="form-help">Gunakan kamera belakang HP atau pilih foto dari galeri. Foto akan dikompresi sebelum diunggah.</p><div class="photo-actions"><label class="btn secondary file-button">📷 Ambil Foto<input id="cameraPhotoInput" type="file" accept="image/*" capture="environment" hidden></label><label class="btn secondary file-button">🖼 Pilih dari Galeri<input id="galleryPhotoInput" type="file" accept="image/*" multiple hidden></label></div><div id="photoPreview" class="photo-grid"></div><p id="photoStatus" class="form-help"></p></div>
     <div class="wide actions"><button type="button" id="saveDraft" class="btn secondary">Simpan Draf</button><button class="btn primary" id="submitJournal">Kirim ke Pembimbing</button><button type="button" class="btn secondary modal-close">Batal</button></div></form>`);
 
@@ -1192,14 +1266,379 @@ function randomId() {
 }
 
 async function renderAttendance() {
-  let query = sb.from('attendance').select('*,student:profiles!attendance_student_id_fkey(full_name)').order('attendance_date', { ascending: false });
+  let query = sb.from('attendance')
+    .select('*,student:profiles!attendance_student_id_fkey(full_name)')
+    .order('attendance_date', { ascending: false });
   if (state.profile.role === 'student') query = query.eq('student_id', state.profile.id);
+
   const { data, error } = await query;
   if (error) throw error;
-  state.attendance = data || [];
+
+  const attendanceRows = data || [];
+  const studentIds = [...new Set(attendanceRows.map((item) => item.student_id).filter(Boolean))];
+  const detailsById = new Map();
+  if (studentIds.length) {
+    const detailsResult = await sb.from('student_details')
+      .select('id,nis,class_name,internship_place')
+      .in('id', studentIds);
+    if (!detailsResult.error) {
+      (detailsResult.data || []).forEach((item) => detailsById.set(item.id, item));
+    }
+  }
+
+  state.attendance = attendanceRows.map((item) => ({
+    ...item,
+    student_detail: detailsById.get(item.student_id) || null,
+  }));
+
   const canAdd = state.profile.role === 'student';
-  $('#content').innerHTML = `<div class="section-head"><h3>Presensi PKL</h3>${canAdd ? '<button class="btn primary" id="addAttendance">Isi Presensi</button>' : ''}</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Lokasi</th></tr></thead><tbody>${state.attendance.map((item) => `<tr><td>${esc(item.attendance_date)}</td><td>${esc(item.student?.full_name || state.profile.full_name)}</td><td>${esc(item.check_in || '-')}</td><td>${esc(item.check_out || '-')}</td><td>${esc(item.presence_status)}</td><td>${esc(item.location || '-')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Belum ada presensi.</td></tr>'}</tbody></table></div>`;
+  const canExport = ['admin', 'teacher', 'field_supervisor'].includes(state.profile.role);
+  const students = [...new Map(state.attendance.map((item) => [
+    item.student_id,
+    item.student?.full_name || 'Siswa',
+  ])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'id'));
+
+  $('#content').innerHTML = `
+    <div class="page-intro attendance-page-intro">
+      <div>
+        <span class="section-kicker">REKAP KEHADIRAN PKL</span>
+        <h3>${canAdd ? 'Presensi Saya' : 'Presensi Siswa'}</h3>
+        <p>${canAdd
+          ? 'Catat kehadiran, waktu masuk, waktu pulang, dan lokasi kegiatan PKL.'
+          : 'Filter data kehadiran lalu unduh rekap dalam format Excel, Word, atau PDF.'}</p>
+      </div>
+      ${canAdd
+        ? '<button class="btn primary btn-emphasis" id="addAttendance">＋ Isi Presensi</button>'
+        : `<div class="attendance-export-actions" aria-label="Ekspor rekap presensi">
+            <button class="btn export-btn excel" id="exportAttendanceExcel" type="button">Excel</button>
+            <button class="btn export-btn word" id="exportAttendanceWord" type="button">Word</button>
+            <button class="btn export-btn pdf" id="exportAttendancePdf" type="button">PDF</button>
+          </div>`}
+    </div>
+
+    ${canExport ? `
+      <section class="data-panel attendance-filter-panel">
+        <div class="attendance-filter-heading">
+          <div><strong>Filter Rekap Presensi</strong><span>Data yang tampil akan menjadi data yang diekspor.</span></div>
+          <button class="btn secondary" id="resetAttendanceFilter" type="button">Reset Filter</button>
+        </div>
+        <div class="attendance-filter-grid">
+          <label>Tanggal mulai<input id="attendanceStart" type="date"></label>
+          <label>Tanggal selesai<input id="attendanceEnd" type="date"></label>
+          <label>Siswa<select id="attendanceStudent"><option value="">Semua siswa</option>${students.map(([id, name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('')}</select></label>
+          <label>Status<select id="attendanceStatus"><option value="">Semua status</option><option>Hadir</option><option>Sakit</option><option>Izin</option><option>Tanpa Keterangan</option><option>Dinas Luar</option></select></label>
+        </div>
+      </section>` : ''}
+
+    <div class="attendance-summary" id="attendanceSummary"></div>
+
+    <section class="data-panel attendance-data-panel">
+      <div class="panel-title">
+        <div><h4>Rekap Presensi</h4><p id="attendanceResultMeta">Memuat data presensi...</p></div>
+        ${canExport ? '<span class="policy-note">Ekspor mengikuti filter aktif</span>' : ''}
+      </div>
+      <div class="table-wrap">
+        <table class="attendance-table">
+          <thead><tr><th>Tanggal</th><th>Siswa</th><th>NIS/Kelas</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Lokasi</th><th>Catatan</th></tr></thead>
+          <tbody id="attendanceRows"></tbody>
+        </table>
+      </div>
+    </section>`;
+
   if (canAdd) $('#addAttendance').onclick = () => openAttendance();
+  ['attendanceStart', 'attendanceEnd', 'attendanceStudent', 'attendanceStatus'].forEach((id) => {
+    $(`#${id}`)?.addEventListener('change', drawAttendanceTable);
+  });
+  $('#resetAttendanceFilter')?.addEventListener('click', () => {
+    ['attendanceStart', 'attendanceEnd', 'attendanceStudent', 'attendanceStatus'].forEach((id) => {
+      const field = $(`#${id}`);
+      if (field) field.value = '';
+    });
+    drawAttendanceTable();
+  });
+  $('#exportAttendanceExcel')?.addEventListener('click', exportAttendanceExcel);
+  $('#exportAttendanceWord')?.addEventListener('click', exportAttendanceWord);
+  $('#exportAttendancePdf')?.addEventListener('click', exportAttendancePdf);
+  drawAttendanceTable();
+}
+
+function getFilteredAttendanceRows() {
+  const start = $('#attendanceStart')?.value || '';
+  const end = $('#attendanceEnd')?.value || '';
+  const studentId = $('#attendanceStudent')?.value || '';
+  const status = $('#attendanceStatus')?.value || '';
+  return state.attendance.filter((item) => {
+    if (start && item.attendance_date < start) return false;
+    if (end && item.attendance_date > end) return false;
+    if (studentId && item.student_id !== studentId) return false;
+    if (status && item.presence_status !== status) return false;
+    return true;
+  });
+}
+
+function formatAttendanceDate(value, long = false) {
+  if (!value) return '-';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('id-ID', long
+    ? { day: 'numeric', month: 'long', year: 'numeric' }
+    : { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+}
+
+function formatAttendanceTime(value) {
+  return value ? String(value).slice(0, 5) : '-';
+}
+
+function attendanceStatusClass(status) {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'hadir') return 'present';
+  if (normalized === 'sakit' || normalized === 'izin') return 'permission';
+  if (normalized === 'tanpa keterangan') return 'absent';
+  return 'other';
+}
+
+function drawAttendanceTable() {
+  const rows = getFilteredAttendanceRows();
+  const present = rows.filter((item) => item.presence_status === 'Hadir').length;
+  const permission = rows.filter((item) => ['Sakit', 'Izin'].includes(item.presence_status)).length;
+  const absent = rows.filter((item) => item.presence_status === 'Tanpa Keterangan').length;
+
+  const summary = $('#attendanceSummary');
+  if (summary) summary.innerHTML = `
+    <article><span>Total data</span><strong>${rows.length}</strong><small>Baris presensi</small></article>
+    <article><span>Hadir</span><strong>${present}</strong><small>Kehadiran tercatat</small></article>
+    <article><span>Sakit/Izin</span><strong>${permission}</strong><small>Dengan keterangan</small></article>
+    <article><span>Tanpa keterangan</span><strong>${absent}</strong><small>Perlu tindak lanjut</small></article>`;
+
+  const body = $('#attendanceRows');
+  if (body) body.innerHTML = rows.map((item) => {
+    const detail = item.student_detail || {};
+    const studentName = item.student?.full_name || state.profile.full_name || '-';
+    const studentMeta = [detail.nis, detail.class_name].filter(Boolean).join(' • ') || '-';
+    return `<tr>
+      <td class="date-cell">${esc(formatAttendanceDate(item.attendance_date))}</td>
+      <td><strong class="attendance-student-name">${esc(studentName)}</strong></td>
+      <td><span class="attendance-student-meta">${esc(studentMeta)}</span></td>
+      <td>${esc(formatAttendanceTime(item.check_in))}</td>
+      <td>${esc(formatAttendanceTime(item.check_out))}</td>
+      <td><span class="attendance-status ${attendanceStatusClass(item.presence_status)}">${esc(item.presence_status || '-')}</span></td>
+      <td>${esc(item.location || '-')}</td>
+      <td><span class="attendance-notes">${esc(item.notes || '-')}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="empty">Tidak ada data presensi yang sesuai dengan filter.</td></tr>';
+
+  const meta = $('#attendanceResultMeta');
+  if (meta) meta.textContent = `${rows.length} data • ${getAttendanceReportPeriod(rows)}`;
+}
+
+function getAttendanceReportPeriod(rows = getFilteredAttendanceRows()) {
+  const startFilter = $('#attendanceStart')?.value || '';
+  const endFilter = $('#attendanceEnd')?.value || '';
+  if (startFilter && endFilter) return `${formatAttendanceDate(startFilter, true)} - ${formatAttendanceDate(endFilter, true)}`;
+  if (startFilter) return `Mulai ${formatAttendanceDate(startFilter, true)}`;
+  if (endFilter) return `Sampai ${formatAttendanceDate(endFilter, true)}`;
+  const dates = rows.map((item) => item.attendance_date).filter(Boolean).sort();
+  if (!dates.length) return 'Semua periode';
+  if (dates[0] === dates[dates.length - 1]) return formatAttendanceDate(dates[0], true);
+  return `${formatAttendanceDate(dates[0], true)} - ${formatAttendanceDate(dates[dates.length - 1], true)}`;
+}
+
+function attendanceReportData(rows = getFilteredAttendanceRows()) {
+  return rows.map((item, index) => {
+    const detail = item.student_detail || {};
+    return {
+      no: index + 1,
+      date: formatAttendanceDate(item.attendance_date),
+      nis: detail.nis || '-',
+      name: item.student?.full_name || state.profile.full_name || '-',
+      className: detail.class_name || '-',
+      internshipPlace: detail.internship_place || '-',
+      checkIn: formatAttendanceTime(item.check_in),
+      checkOut: formatAttendanceTime(item.check_out),
+      status: item.presence_status || '-',
+      location: item.location || '-',
+      notes: item.notes || '-',
+    };
+  });
+}
+
+function attendanceReportMeta(rows = getFilteredAttendanceRows()) {
+  const now = new Date();
+  const counts = {};
+  rows.forEach((item) => { counts[item.presence_status || 'Lainnya'] = (counts[item.presence_status || 'Lainnya'] || 0) + 1; });
+  return {
+    school: 'SMK Kehutanan Rimba Bahari Sumedang',
+    title: 'REKAP PRESENSI SISWA PKL',
+    period: getAttendanceReportPeriod(rows),
+    generatedBy: `${state.profile.full_name} - ${roles[state.profile.role] || state.profile.role}`,
+    generatedAt: new Intl.DateTimeFormat('id-ID', { dateStyle: 'long', timeStyle: 'short' }).format(now),
+    counts,
+  };
+}
+
+function attendanceFilename(extension) {
+  const date = new Date().toISOString().slice(0, 10);
+  const student = $('#attendanceStudent')?.selectedOptions?.[0]?.textContent?.trim();
+  const suffix = student && $('#attendanceStudent')?.value
+    ? `-${student.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')}`
+    : '';
+  return `rekap-presensi-pkl${suffix}-${date}.${extension}`;
+}
+
+function safeSpreadsheetText(value) {
+  const text = String(value ?? '');
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
+function downloadBlob(blob, filename) {
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function requireAttendanceRows() {
+  const rows = getFilteredAttendanceRows();
+  if (!rows.length) {
+    toast('Tidak ada data presensi yang dapat diekspor. Periksa kembali filter.');
+    return null;
+  }
+  return rows;
+}
+
+function exportAttendanceExcel() {
+  const rows = requireAttendanceRows();
+  if (!rows) return;
+  if (!window.XLSX) return toast('Modul Excel belum termuat. Periksa koneksi internet lalu muat ulang aplikasi.');
+
+  const report = attendanceReportData(rows);
+  const meta = attendanceReportMeta(rows);
+  const summaryRows = [
+    [meta.title],
+    [meta.school],
+    [],
+    ['Periode', meta.period],
+    ['Dicetak oleh', meta.generatedBy],
+    ['Waktu ekspor', meta.generatedAt],
+    ['Total data', rows.length],
+    ...Object.entries(meta.counts).map(([status, total]) => [status, total]),
+  ];
+  const dataRows = [
+    ['No', 'Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Tempat PKL', 'Jam Masuk', 'Jam Pulang', 'Status', 'Lokasi', 'Catatan'],
+    ...report.map((item) => [item.no, item.date, item.nis, item.name, item.className, item.internshipPlace, item.checkIn, item.checkOut, item.status, item.location, item.notes].map(safeSpreadsheetText)),
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+  summarySheet['!cols'] = [{ wch: 22 }, { wch: 55 }];
+  const dataSheet = XLSX.utils.aoa_to_sheet(dataRows);
+  dataSheet['!cols'] = [
+    { wch: 6 }, { wch: 13 }, { wch: 16 }, { wch: 28 }, { wch: 18 },
+    { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 28 }, { wch: 38 },
+  ];
+  dataSheet['!autofilter'] = { ref: `A1:K${dataRows.length}` };
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Ringkasan');
+  XLSX.utils.book_append_sheet(workbook, dataSheet, 'Data Presensi');
+  XLSX.writeFile(workbook, attendanceFilename('xlsx'), { compression: true });
+  toast('Rekap presensi Excel berhasil dibuat.');
+}
+
+function attendanceReportTableHtml(report) {
+  return `<table><thead><tr><th>No</th><th>Tanggal</th><th>NIS</th><th>Nama Siswa</th><th>Kelas</th><th>Tempat PKL</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Lokasi</th><th>Catatan</th></tr></thead><tbody>${report.map((item) => `<tr><td>${item.no}</td><td>${esc(item.date)}</td><td>${esc(item.nis)}</td><td>${esc(item.name)}</td><td>${esc(item.className)}</td><td>${esc(item.internshipPlace)}</td><td>${esc(item.checkIn)}</td><td>${esc(item.checkOut)}</td><td>${esc(item.status)}</td><td>${esc(item.location)}</td><td>${esc(item.notes)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function attendanceDocumentHtml(rows, autoPrint = false) {
+  const report = attendanceReportData(rows);
+  const meta = attendanceReportMeta(rows);
+  const summary = Object.entries(meta.counts).map(([status, total]) => `<span><b>${esc(status)}:</b> ${total}</span>`).join('');
+  return `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${esc(meta.title)}</title><style>
+    @page{size:A4 landscape;margin:14mm}body{font-family:Arial,sans-serif;color:#172b4d;font-size:10pt;margin:0}h1{text-align:center;font-size:17pt;margin:0 0 4px;color:#155b43}h2{text-align:center;font-size:11pt;margin:0 0 14px;font-weight:normal}.meta{display:grid;grid-template-columns:130px 1fr;gap:5px;margin:0 0 12px;padding:10px;background:#f2f7f4;border:1px solid #dce8e1}.summary{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 10px;padding:8px 10px;border:1px solid #dce8e1}table{width:100%;border-collapse:collapse;font-size:8.5pt}th,td{border:1px solid #bccbc3;padding:5px;vertical-align:top}th{background:#155b43;color:#fff;text-align:center}tbody tr:nth-child(even){background:#f7faf8}.signature{display:flex;justify-content:flex-end;margin-top:26px}.signature div{width:250px;text-align:center}.signature .space{height:55px}.footer{margin-top:10px;color:#667085;font-size:8pt}
+  </style></head><body><h1>${esc(meta.title)}</h1><h2>${esc(meta.school)}</h2><div class="meta"><b>Periode</b><span>${esc(meta.period)}</span><b>Dicetak oleh</b><span>${esc(meta.generatedBy)}</span><b>Waktu cetak</b><span>${esc(meta.generatedAt)}</span></div><div class="summary"><span><b>Total:</b> ${rows.length}</span>${summary}</div>${attendanceReportTableHtml(report)}<div class="signature"><div>Mengetahui,<br>${esc(roles[state.profile.role] || 'Guru Pembimbing')}<div class="space"></div><b>${esc(state.profile.full_name)}</b></div></div><div class="footer">Dokumen dibuat melalui E-Jurnal PKL SMK Kehutanan Rimba Bahari Sumedang.</div>${autoPrint ? '<script>window.onload=function(){window.print();}<\/script>' : ''}</body></html>`;
+}
+
+function exportAttendanceWord() {
+  const rows = requireAttendanceRows();
+  if (!rows) return;
+  const html = attendanceDocumentHtml(rows);
+  downloadBlob(new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' }), attendanceFilename('doc'));
+  toast('Rekap presensi Word berhasil dibuat.');
+}
+
+function exportAttendancePdf() {
+  const rows = requireAttendanceRows();
+  if (!rows) return;
+  const JsPdf = window.jspdf?.jsPDF;
+  if (!JsPdf) {
+    toast('Modul PDF belum termuat. Dialog cetak dibuka sebagai alternatif.');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return toast('Izinkan pop-up browser untuk mencetak PDF.');
+    printWindow.document.write(attendanceDocumentHtml(rows, true));
+    printWindow.document.close();
+    return;
+  }
+
+  const report = attendanceReportData(rows);
+  const meta = attendanceReportMeta(rows);
+  const documentPdf = new JsPdf({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  documentPdf.setTextColor(21, 91, 67);
+  documentPdf.setFont('helvetica', 'bold');
+  documentPdf.setFontSize(15);
+  documentPdf.text(meta.title, 148.5, 13, { align: 'center' });
+  documentPdf.setTextColor(23, 43, 77);
+  documentPdf.setFont('helvetica', 'normal');
+  documentPdf.setFontSize(9);
+  documentPdf.text(meta.school, 148.5, 19, { align: 'center' });
+  documentPdf.setFontSize(7.5);
+  documentPdf.text(`Periode: ${meta.period}`, 12, 26);
+  documentPdf.text(`Dicetak oleh: ${meta.generatedBy}`, 12, 31);
+  documentPdf.text(`Total: ${rows.length} data`, 285, 26, { align: 'right' });
+  documentPdf.text(meta.generatedAt, 285, 31, { align: 'right' });
+
+  if (typeof documentPdf.autoTable !== 'function') {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return toast('Modul tabel PDF belum termuat dan pop-up diblokir browser.');
+    printWindow.document.write(attendanceDocumentHtml(rows, true));
+    printWindow.document.close();
+    return;
+  }
+
+  documentPdf.autoTable({
+    startY: 36,
+    head: [['No', 'Tanggal', 'NIS', 'Nama', 'Kelas', 'Tempat PKL', 'Masuk', 'Pulang', 'Status', 'Lokasi', 'Catatan']],
+    body: report.map((item) => [item.no, item.date, item.nis, item.name, item.className, item.internshipPlace, item.checkIn, item.checkOut, item.status, item.location, item.notes]),
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.6, textColor: [23, 43, 77], valign: 'middle' },
+    headStyles: { fillColor: [21, 91, 67], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+    alternateRowStyles: { fillColor: [247, 250, 248] },
+    margin: { left: 10, right: 10, bottom: 16 },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: 18 }, 2: { cellWidth: 17 },
+      3: { cellWidth: 33 }, 4: { cellWidth: 22 }, 5: { cellWidth: 34 },
+      6: { cellWidth: 14, halign: 'center' }, 7: { cellWidth: 14, halign: 'center' },
+      8: { cellWidth: 24 }, 9: { cellWidth: 39 }, 10: { cellWidth: 45 },
+    },
+    didDrawPage: () => {
+      documentPdf.setFontSize(7);
+      documentPdf.setTextColor(102, 112, 133);
+      documentPdf.text(`E-Jurnal PKL • Halaman ${documentPdf.internal.getNumberOfPages()}`, 285, 202, { align: 'right' });
+    },
+  });
+
+  const finalY = documentPdf.lastAutoTable?.finalY || 165;
+  if (finalY > 175) documentPdf.addPage('a4', 'landscape');
+  const signatureY = finalY > 175 ? 25 : finalY + 14;
+  documentPdf.setTextColor(23, 43, 77);
+  documentPdf.setFontSize(8);
+  documentPdf.text('Mengetahui,', 250, signatureY, { align: 'center' });
+  documentPdf.text(roles[state.profile.role] || 'Guru Pembimbing', 250, signatureY + 5, { align: 'center' });
+  documentPdf.setFont('helvetica', 'bold');
+  documentPdf.text(state.profile.full_name, 250, signatureY + 24, { align: 'center' });
+  documentPdf.save(attendanceFilename('pdf'));
+  toast('Rekap presensi PDF berhasil dibuat.');
 }
 
 function openAttendance() {

@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v15-session-refresh';
+const CACHE = 'ejurnal-rbs-v18-user-counts';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=15',
-  '/app.js?v=15',
-  '/config.js?v=15',
+  '/styles.css?v=18',
+  '/app.js?v=18',
+  '/config.js?v=18',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'
