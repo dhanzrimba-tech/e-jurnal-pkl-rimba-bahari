@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v22-student-monitor-filters';
+const CACHE = 'ejurnal-rbs-v23-guided-students-menu';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=21',
-  '/app.js?v=21',
-  '/config.js?v=21',
+  '/styles.css?v=22',
+  '/app.js?v=22',
+  '/config.js?v=22',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

@@ -14,6 +14,7 @@ const pageDescriptions = {
   users: 'Kelola akun dan hak akses pengguna',
   registrations: 'Pendaftaran mandiri dan verifikasi siswa',
   students: 'Data penempatan dan pembimbing siswa',
+  'guided-students': 'Daftar lengkap siswa yang menjadi bimbingan Anda',
   journals: 'Monitoring, dokumentasi, dan validasi jurnal',
   'my-journal': 'Catat kegiatan, pembelajaran, dan dokumentasi PKL',
   attendance: 'Rekap kehadiran selama pelaksanaan PKL',
@@ -26,6 +27,7 @@ const navIcons = {
   users: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3ZM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"/></svg>',
   registrations: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm-7 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm6 11H6v-.8c0-2 4-3.1 6-3.1s6 1.1 6 3.1v.8Z"/></svg>',
   students: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8l10-5Zm6 8.5V16l-6 3-6-3v-4.5l6 3 6-3ZM20 10v7h2v-8l-2 1Z"/></svg>',
+  'guided-students': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 8l10 5 8-4v6h2V8L12 3Zm-6 9.5V17l6 3 6-3v-4.5l-6 3-6-3Z"/><path d="M4 19h7v2H4z"/></svg>',
   journals: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2Zm8 1.5V8h4.5L14 3.5ZM8 12v2h8v-2H8Zm0 4v2h8v-2H8Z"/></svg>',
   'my-journal': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2Zm8 1.5V8h4.5L14 3.5ZM8 12v2h8v-2H8Zm0 4v2h8v-2H8Z"/></svg>',
   attendance: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2Zm0 16H5V9h14v11Zm-7-2 5-5-1.41-1.41L12 15.17l-1.59-1.58L9 15l3 3Z"/></svg>',
@@ -42,6 +44,7 @@ const state = {
   deletionRequests: [],
   deletionFeatureReady: true,
   dashboardJournalFilter: 'all',
+  journalStudentFilter: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -75,8 +78,9 @@ const menus = {
     ['my-attendance', 'Presensi Saya'], ['reports', 'Laporan Saya'],
   ],
   teacher: [
-    ['dashboard', 'Dashboard'], ['journals', 'Monitoring Jurnal'],
-    ['attendance', 'Kehadiran Siswa'], ['reports', 'Laporan'],
+    ['dashboard', 'Dashboard'], ['guided-students', 'Siswa Bimbingan'],
+    ['journals', 'Monitoring Jurnal'], ['attendance', 'Kehadiran Siswa'],
+    ['reports', 'Laporan'],
   ],
   field_supervisor: [
     ['dashboard', 'Dashboard'], ['journals', 'Validasi Jurnal'],
@@ -226,6 +230,7 @@ function renderNav() {
       const targetPage = button.dataset.page;
       if (targetPage === 'journals' || targetPage === 'my-journal') {
         state.dashboardJournalFilter = 'all';
+        state.journalStudentFilter = null;
       }
       navigate(targetPage);
     };
@@ -245,6 +250,7 @@ async function navigate(page) {
     else if (page === 'users') await renderUsers();
     else if (page === 'registrations') await renderRegistrations();
     else if (page === 'students') await renderStudents();
+    else if (page === 'guided-students') await renderGuidedStudents();
     else if (page === 'journals' || page === 'my-journal') await renderJournals();
     else if (page === 'attendance' || page === 'my-attendance') await renderAttendance();
     else await renderReports();
@@ -282,7 +288,9 @@ async function renderDashboard() {
     ? '<button class="btn hero-primary" id="quickJournal">＋ Tulis Jurnal Hari Ini</button><button class="btn hero-secondary" id="quickAttendance">✓ Isi Presensi</button>'
     : role === 'admin'
       ? '<button class="btn hero-primary" id="quickRegistration">Buka Pendaftaran Siswa</button><button class="btn hero-secondary" id="quickUsers">Kelola Pengguna</button>'
-      : '<button class="btn hero-primary" id="quickMonitoring">Buka Monitoring Jurnal</button>';
+      : role === 'teacher'
+        ? '<button class="btn hero-primary" id="quickGuidedStudents">Lihat Siswa Bimbingan</button><button class="btn hero-secondary" id="quickMonitoring">Buka Monitoring Jurnal</button>'
+        : '<button class="btn hero-primary" id="quickMonitoring">Buka Monitoring Jurnal</button>';
 
   $('#content').innerHTML = `<section class="welcome-hero">
     <div class="hero-copy"><span class="hero-kicker">${esc(roleCopy[0])}</span><h2>Selamat datang, ${firstName}.</h2><p>${esc(roleCopy[1])}</p><div class="hero-actions">${quickAction}</div></div>
@@ -303,12 +311,14 @@ async function renderDashboard() {
   $('#quickAttendance')?.addEventListener('click', () => navigate('my-attendance'));
   $('#quickRegistration')?.addEventListener('click', () => navigate('registrations'));
   $('#quickUsers')?.addEventListener('click', () => navigate('users'));
+  $('#quickGuidedStudents')?.addEventListener('click', () => navigate('guided-students'));
   $('#quickMonitoring')?.addEventListener('click', () => navigate('journals'));
 
   const journalPage = role === 'student' ? 'my-journal' : 'journals';
   const attendancePage = role === 'student' ? 'my-attendance' : 'attendance';
   const openJournalRecap = (filter = 'all') => {
     state.dashboardJournalFilter = filter;
+    state.journalStudentFilter = null;
     navigate(journalPage);
   };
   $('#metricTotalJournals')?.addEventListener('click', () => openJournalRecap('all'));
@@ -744,6 +754,156 @@ async function showRegistrationView(token) {
   };
 }
 
+async function renderGuidedStudents() {
+  if (state.profile.role !== 'teacher') return navigate('dashboard');
+
+  const { data: studentRows, error: studentError } = await sb.from('student_details')
+    .select('*,profiles!student_details_id_fkey(full_name,email,is_active),field_supervisor:profiles!student_details_field_supervisor_id_fkey(full_name)')
+    .eq('teacher_id', state.profile.id)
+    .order('nis');
+  if (studentError) throw studentError;
+
+  const guidedStudents = studentRows || [];
+  const studentIds = guidedStudents.map((student) => student.id);
+  let journals = [];
+  let attendance = [];
+
+  if (studentIds.length) {
+    const [journalResult, attendanceResult] = await Promise.all([
+      sb.from('daily_journals')
+        .select('id,student_id,journal_date,status,activity_title')
+        .in('student_id', studentIds)
+        .order('journal_date', { ascending: false }),
+      sb.from('attendance')
+        .select('id,student_id,attendance_date,presence_status')
+        .in('student_id', studentIds)
+        .order('attendance_date', { ascending: false }),
+    ]);
+    if (journalResult.error) throw journalResult.error;
+    if (attendanceResult.error) throw attendanceResult.error;
+    journals = journalResult.data || [];
+    attendance = attendanceResult.data || [];
+  }
+
+  const journalStats = new Map();
+  journals.forEach((journal) => {
+    const current = journalStats.get(journal.student_id) || {
+      total: 0, submitted: 0, approved: 0, revision: 0, latestDate: null, latestTitle: '',
+    };
+    current.total += 1;
+    if (journal.status === 'submitted') current.submitted += 1;
+    if (journal.status === 'approved') current.approved += 1;
+    if (journal.status === 'revision') current.revision += 1;
+    if (!current.latestDate || journal.journal_date > current.latestDate) {
+      current.latestDate = journal.journal_date;
+      current.latestTitle = journal.activity_title || '';
+    }
+    journalStats.set(journal.student_id, current);
+  });
+
+  const attendanceStats = new Map();
+  attendance.forEach((item) => {
+    const current = attendanceStats.get(item.student_id) || { total: 0, present: 0, latestDate: null };
+    current.total += 1;
+    if (String(item.presence_status || '').toLowerCase() === 'hadir') current.present += 1;
+    if (!current.latestDate || item.attendance_date > current.latestDate) current.latestDate = item.attendance_date;
+    attendanceStats.set(item.student_id, current);
+  });
+
+  const rows = guidedStudents.map((student) => ({
+    ...student,
+    journalStat: journalStats.get(student.id) || { total: 0, submitted: 0, approved: 0, revision: 0, latestDate: null, latestTitle: '' },
+    attendanceStat: attendanceStats.get(student.id) || { total: 0, present: 0, latestDate: null },
+  }));
+
+  const withJournal = rows.filter((student) => student.journalStat.total > 0).length;
+  const withoutJournal = rows.length - withJournal;
+  const pendingValidation = rows.reduce((sum, student) => sum + student.journalStat.submitted, 0);
+
+  $('#content').innerHTML = `<div class="page-intro guided-student-intro"><div><span class="section-kicker">MONITORING SISWA BIMBINGAN</span><h3>Siswa Bimbingan Saya</h3><p>Daftar ini tetap menampilkan seluruh siswa yang ditugaskan kepada Anda, termasuk siswa yang belum pernah mengisi jurnal.</p></div><button type="button" class="btn primary btn-emphasis" id="openAllGuidedJournals">Buka Monitoring Jurnal</button></div>
+    <div class="guided-summary-grid">
+      <article><span>Total bimbingan</span><strong>${rows.length}</strong><small>Seluruh siswa yang ditugaskan</small></article>
+      <article class="has-journal"><span>Sudah mengisi</span><strong>${withJournal}</strong><small>Memiliki minimal satu jurnal</small></article>
+      <article class="no-journal"><span>Belum mengisi</span><strong>${withoutJournal}</strong><small>Belum memiliki jurnal sama sekali</small></article>
+      <article class="pending-journal"><span>Menunggu validasi</span><strong>${pendingValidation}</strong><small>Jurnal yang perlu diperiksa</small></article>
+    </div>
+    <div class="data-panel guided-student-panel">
+      <div class="panel-title"><div><h4>Daftar Siswa Bimbingan</h4><p id="guidedStudentResultInfo">Menampilkan ${rows.length} siswa.</p></div><button type="button" class="btn secondary" id="resetGuidedStudentFilters">Reset Filter</button></div>
+      <div class="guided-student-toolbar">
+        <label class="guided-search-field"><span>Cari siswa</span><input id="guidedStudentSearch" type="search" placeholder="Nama, NISN, kelas, atau tempat PKL..."></label>
+        <label><span>Status jurnal</span><select id="guidedJournalStatus"><option value="">Semua status</option><option value="with">Sudah mengisi jurnal</option><option value="without">Belum mengisi jurnal</option><option value="pending">Menunggu validasi</option><option value="revision">Perlu perbaikan</option></select></label>
+        <label><span>Urutkan</span><select id="guidedStudentSort"><option value="name-asc">Nama A–Z</option><option value="nis-asc">NISN terkecil</option><option value="journal-desc">Jurnal terbanyak</option><option value="journal-asc">Jurnal paling sedikit</option><option value="latest-desc">Jurnal terbaru</option></select></label>
+      </div>
+      <div class="guided-monitor-note"><span>ℹ</span><p>Siswa muncul berdasarkan penetapan <strong>Guru Pembimbing</strong> pada menu Data Siswa. Siswa tanpa jurnal tetap ditampilkan dengan status <strong>Belum Mengisi Jurnal</strong>.</p></div>
+      <div class="table-wrap"><table class="guided-student-table"><thead><tr><th>No.</th><th>NISN</th><th>Nama Siswa</th><th>Kelas</th><th>Tempat PKL</th><th>Pembimbing Lapangan</th><th>Jurnal</th><th>Jurnal Terakhir</th><th>Presensi</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="guidedStudentRows"></tbody></table></div>
+    </div>`;
+
+  const compareText = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
+  const drawGuidedStudents = () => {
+    const query = ($('#guidedStudentSearch').value || '').trim().toLowerCase();
+    const status = $('#guidedJournalStatus').value;
+    const sort = $('#guidedStudentSort').value;
+
+    const visible = rows.filter((student) => {
+      const searchText = `${student.nis || ''} ${student.profiles?.full_name || ''} ${student.profiles?.email || ''} ${student.class_name || ''} ${student.internship_place || ''}`.toLowerCase();
+      const matchesStatus = !status
+        || (status === 'with' && student.journalStat.total > 0)
+        || (status === 'without' && student.journalStat.total === 0)
+        || (status === 'pending' && student.journalStat.submitted > 0)
+        || (status === 'revision' && student.journalStat.revision > 0);
+      return (!query || searchText.includes(query)) && matchesStatus;
+    });
+
+    const sorters = {
+      'name-asc': (a, b) => compareText(a.profiles?.full_name, b.profiles?.full_name),
+      'nis-asc': (a, b) => compareText(a.nis, b.nis),
+      'journal-desc': (a, b) => b.journalStat.total - a.journalStat.total || compareText(a.profiles?.full_name, b.profiles?.full_name),
+      'journal-asc': (a, b) => a.journalStat.total - b.journalStat.total || compareText(a.profiles?.full_name, b.profiles?.full_name),
+      'latest-desc': (a, b) => compareText(b.journalStat.latestDate || '', a.journalStat.latestDate || '') || compareText(a.profiles?.full_name, b.profiles?.full_name),
+    };
+    visible.sort(sorters[sort] || sorters['name-asc']);
+
+    $('#guidedStudentRows').innerHTML = visible.map((student, index) => {
+      const journalStatus = student.journalStat.total === 0
+        ? '<span class="guided-status no-entry">Belum Mengisi Jurnal</span>'
+        : student.journalStat.submitted > 0
+          ? `<span class="guided-status pending">${student.journalStat.submitted} Menunggu Validasi</span>`
+          : student.journalStat.revision > 0
+            ? `<span class="guided-status revision">${student.journalStat.revision} Perlu Perbaikan</span>`
+            : '<span class="guided-status active">Aktif Mengisi</span>';
+      const lastJournal = student.journalStat.latestDate
+        ? `<strong class="guided-last-date">${esc(formatAttendanceDate(student.journalStat.latestDate))}</strong><small>${esc(student.journalStat.latestTitle || '-')}</small>`
+        : '<span class="muted">Belum ada jurnal</span>';
+      return `<tr><td><span class="row-number">${index + 1}</span></td><td><strong>${esc(student.nis || '-')}</strong></td><td><strong class="student-name-cell">${esc(student.profiles?.full_name || '-')}</strong><small>${esc(student.profiles?.email || '')}</small></td><td>${esc(student.class_name || '-')}</td><td><span class="placement-cell">${esc(student.internship_place || '-')}</span></td><td>${student.field_supervisor?.full_name ? esc(student.field_supervisor.full_name) : '<span class="assignment-empty">Belum ditetapkan</span>'}</td><td><div class="journal-count-cell"><strong>${student.journalStat.total}</strong><small>${student.journalStat.approved} disetujui</small></div></td><td><div class="guided-last-journal">${lastJournal}</div></td><td><div class="attendance-count-cell"><strong>${student.attendanceStat.total}</strong><small>${student.attendanceStat.present} hadir</small></div></td><td>${journalStatus}</td><td><button type="button" class="btn secondary monitor-guided-student" data-id="${student.id}" data-name="${esc(student.profiles?.full_name || 'Siswa')}">Monitor Jurnal</button></td></tr>`;
+    }).join('') || '<tr><td colspan="11" class="empty"><div class="empty-state"><span>⌕</span><strong>Siswa bimbingan tidak ditemukan</strong><p>Ubah pencarian atau reset filter untuk menampilkan data lainnya.</p></div></td></tr>';
+
+    $('#guidedStudentResultInfo').textContent = `Menampilkan ${visible.length} dari ${rows.length} siswa bimbingan.`;
+    document.querySelectorAll('.monitor-guided-student').forEach((button) => {
+      button.onclick = () => {
+        state.dashboardJournalFilter = 'all';
+        state.journalStudentFilter = { id: button.dataset.id, name: button.dataset.name };
+        navigate('journals');
+      };
+    });
+  };
+
+  $('#guidedStudentSearch').addEventListener('input', drawGuidedStudents);
+  $('#guidedJournalStatus').addEventListener('change', drawGuidedStudents);
+  $('#guidedStudentSort').addEventListener('change', drawGuidedStudents);
+  $('#resetGuidedStudentFilters').onclick = () => {
+    $('#guidedStudentSearch').value = '';
+    $('#guidedJournalStatus').value = '';
+    $('#guidedStudentSort').value = 'name-asc';
+    drawGuidedStudents();
+  };
+  $('#openAllGuidedJournals').onclick = () => {
+    state.dashboardJournalFilter = 'all';
+    state.journalStudentFilter = null;
+    navigate('journals');
+  };
+  drawGuidedStudents();
+}
+
 async function renderStudents() {
   if (state.profile.role !== 'admin') return navigate('dashboard');
   const { data, error } = await sb.from('student_details')
@@ -978,7 +1138,7 @@ async function renderJournals() {
     revision: 'Jurnal perlu perbaikan',
     pending_deletion: 'Jurnal menunggu penghapusan',
   };
-  const visibleJournals = journalFilter === 'all'
+  let visibleJournals = journalFilter === 'all'
     ? state.journals
     : journalFilter === 'pending_deletion'
       ? state.journals.filter((item) => {
@@ -986,9 +1146,15 @@ async function renderJournals() {
           return deletionRequest && deletionRequest.status === 'pending';
         })
       : state.journals.filter((item) => item.status === journalFilter);
-  const activeFilterBar = journalFilter === 'all'
-    ? ''
-    : `<div class="dashboard-filter-bar"><div><span>Filter jurnal aktif</span><strong>${journalFilterLabels[journalFilter] || 'Rekap jurnal'}</strong><small>${visibleJournals.length} data ditemukan</small></div><button type="button" class="btn secondary" id="clearDashboardJournalFilter">Tampilkan Semua Jurnal</button></div>`;
+  if (state.journalStudentFilter?.id) {
+    visibleJournals = visibleJournals.filter((item) => item.student_id === state.journalStudentFilter.id);
+  }
+  const activeJournalFilters = [];
+  if (state.journalStudentFilter?.id) activeJournalFilters.push(`Siswa: ${state.journalStudentFilter.name}`);
+  if (journalFilter !== 'all') activeJournalFilters.push(journalFilterLabels[journalFilter] || 'Rekap jurnal');
+  const activeFilterBar = activeJournalFilters.length
+    ? `<div class="dashboard-filter-bar"><div><span>Filter jurnal aktif</span><strong>${esc(activeJournalFilters.join(' · '))}</strong><small>${visibleJournals.length} data ditemukan</small></div><button type="button" class="btn secondary" id="clearDashboardJournalFilter">Tampilkan Semua Jurnal</button></div>`
+    : '';
 
   const journalSummaryCards = [
     { key: 'all', count: state.journals.length, label: 'Semua jurnal', icon: '▤' },
@@ -1021,6 +1187,7 @@ async function renderJournals() {
     ${renderStudentDeletionHistory()}`;
   $('#clearDashboardJournalFilter')?.addEventListener('click', async () => {
     state.dashboardJournalFilter = 'all';
+    state.journalStudentFilter = null;
     await renderJournals();
   });
   document.querySelectorAll('.journal-filter-card').forEach((button) => {
