@@ -1,4 +1,4 @@
-const CACHE = 'ejurnal-rbs-v18-user-counts';
+const CACHE = 'ejurnal-rbs-v19-nisn';
 const ASSETS = [
   '/',
   '/index.html',

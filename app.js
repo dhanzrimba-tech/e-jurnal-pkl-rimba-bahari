@@ -571,13 +571,13 @@ async function renderRegistrations() {
     return `<tr><td><strong>${esc(item.full_name)}</strong><small class="table-subtext">${esc(item.email)}</small></td><td>${esc(detail.nis || '-')}</td><td>${esc(detail.class_name || '-')}</td><td>${esc(detail.internship_place || 'Belum ditentukan')}</td><td>${esc(item.phone || '-')}</td><td>${esc(formatDateTime(item.created_at))}</td><td><button class="btn primary approve-registration" data-id="${item.id}" data-name="${esc(item.full_name)}">Verifikasi & Aktifkan</button></td></tr>`;
   }).join('') || '<tr><td colspan="7" class="empty">Tidak ada pendaftaran yang menunggu.</td></tr>';
 
-  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">PENERIMAAN AKUN SISWA</span><h3>Pendaftaran Mandiri Siswa</h3><p class="muted">Siswa mengisi data sendiri melalui satu link umum. Administrator cukup mencocokkan NIS, nama, dan kelas sebelum mengaktifkan akun.</p></div></div>
+  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">PENERIMAAN AKUN SISWA</span><h3>Pendaftaran Mandiri Siswa</h3><p class="muted">Siswa mengisi data sendiri melalui satu link umum. Administrator cukup mencocokkan NISN, nama, dan kelas sebelum mengaktifkan akun.</p></div></div>
     <div class="public-link-panel">
       <div class="public-link-icon">↗</div>
       <div class="public-link-copy"><span class="section-kicker">LINK PENDAFTARAN UMUM</span><h4>Bagikan satu link ini kepada seluruh siswa</h4><p>Link tidak kedaluwarsa dan dapat dipasang di grup kelas, website sekolah, atau papan informasi digital.</p><div class="copy-box"><input id="publicRegistrationLink" readonly value="${esc(publicRegistrationLink)}"><button id="copyPublicRegistrationLink" class="btn primary">Salin Link</button><a class="btn secondary inline-link" href="${esc(publicRegistrationLink)}" target="_blank" rel="noopener">Buka Form</a></div></div>
     </div>
-    <div class="card"><div class="panel-title"><div><h3>Menunggu Verifikasi (${pending.length})</h3><p>Pastikan siswa masih aktif berdasarkan data sekolah sebelum menekan tombol verifikasi.</p></div></div><div class="table-wrap"><table><thead><tr><th>Nama & Email</th><th>NIS</th><th>Kelas</th><th>Tempat PKL</th><th>Nomor HP</th><th>Tanggal Daftar</th><th>Tindakan</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div>
-    <details class="optional-invite-panel mt-16"><summary>Link khusus per siswa (opsional)</summary><div class="optional-invite-body"><div class="section-head compact"><div><h4>Undangan khusus</h4><p class="muted">Gunakan hanya bila sekolah ingin menyiapkan data siswa terlebih dahulu.</p></div><button class="btn secondary" id="createInviteBtn">Buat Link Khusus</button></div><div class="table-wrap"><table><thead><tr><th>Nama Siswa</th><th>NIS</th><th>Kelas</th><th>Status Link</th><th>Kedaluwarsa</th></tr></thead><tbody>${invites.map((item) => `<tr><td>${esc(item.full_name)}</td><td>${esc(item.nis)}</td><td>${esc(item.class_name)}</td><td>${inviteStatusBadge(item)}</td><td>${esc(formatDateTime(item.expires_at))}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Belum ada link khusus.</td></tr>'}</tbody></table></div></div></details>`;
+    <div class="card"><div class="panel-title"><div><h3>Menunggu Verifikasi (${pending.length})</h3><p>Pastikan siswa masih aktif berdasarkan data sekolah sebelum menekan tombol verifikasi.</p></div></div><div class="table-wrap"><table><thead><tr><th>Nama & Email</th><th>NISN</th><th>Kelas</th><th>Tempat PKL</th><th>Nomor HP</th><th>Tanggal Daftar</th><th>Tindakan</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div>
+    <details class="optional-invite-panel mt-16"><summary>Link khusus per siswa (opsional)</summary><div class="optional-invite-body"><div class="section-head compact"><div><h4>Undangan khusus</h4><p class="muted">Gunakan hanya bila sekolah ingin menyiapkan data siswa terlebih dahulu.</p></div><button class="btn secondary" id="createInviteBtn">Buat Link Khusus</button></div><div class="table-wrap"><table><thead><tr><th>Nama Siswa</th><th>NISN</th><th>Kelas</th><th>Status Link</th><th>Kedaluwarsa</th></tr></thead><tbody>${invites.map((item) => `<tr><td>${esc(item.full_name)}</td><td>${esc(item.nis)}</td><td>${esc(item.class_name)}</td><td>${inviteStatusBadge(item)}</td><td>${esc(formatDateTime(item.expires_at))}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Belum ada link khusus.</td></tr>'}</tbody></table></div></div></details>`;
 
   $('#copyPublicRegistrationLink').onclick = async () => {
     try {
@@ -623,7 +623,7 @@ async function openInviteModal() {
   ]);
   modal('Buat Link Pendaftaran Siswa', `<form id="inviteForm" class="form-grid">
     <label>Nama lengkap siswa<input name="full_name" minlength="2" required></label>
-    <label>NIS<input name="nis" required></label>
+    <label>NISN<input name="nis" inputmode="numeric" required placeholder="Nomor Induk Siswa Nasional"></label>
     <label>Kelas<input name="class_name" value="XI" required></label>
     <label>Tempat PKL/KPH/BKPH/RPH<input name="internship_place" required></label>
     <label>Guru pembimbing<select name="teacher_id"><option value="">Belum ditentukan</option>${(teachers || []).map((item) => `<option value="${item.id}">${esc(item.full_name)}</option>`).join('')}</select></label>
@@ -702,7 +702,7 @@ async function showPublicStudentRegistrationView() {
       return toast(result.error, 5000);
     }
 
-    $('#publicRegistrationCard').innerHTML = `<div class="registration-success"><div class="success-mark">✓</div><div class="brand-block"><h1>Pendaftaran Terkirim</h1><p>Data Anda sudah masuk ke administrator sekolah. Akun belum dapat digunakan sebelum NIS, nama, dan kelas diverifikasi sebagai siswa aktif.</p></div><div class="success-summary"><span><strong>Nama</strong>${esc(fields.full_name)}</span><span><strong>NIS</strong>${esc(fields.nis)}</span><span><strong>Kelas</strong>${esc(fields.class_name)}</span></div><a class="btn primary inline-link" href="/">Kembali ke Halaman Login</a></div>`;
+    $('#publicRegistrationCard').innerHTML = `<div class="registration-success"><div class="success-mark">✓</div><div class="brand-block"><h1>Pendaftaran Terkirim</h1><p>Data Anda sudah masuk ke administrator sekolah. Akun belum dapat digunakan sebelum NISN, nama, dan kelas diverifikasi sebagai siswa aktif.</p></div><div class="success-summary"><span><strong>Nama</strong>${esc(fields.full_name)}</span><span><strong>NISN</strong>${esc(fields.nis)}</span><span><strong>Kelas</strong>${esc(fields.class_name)}</span></div><a class="btn primary inline-link" href="/">Kembali ke Halaman Login</a></div>`;
   };
 }
 
@@ -751,7 +751,7 @@ async function renderStudents() {
     .order('nis');
   if (error) throw error;
   state.students = data || [];
-  $('#content').innerHTML = `<div class="section-head"><h3>Data Siswa</h3><button class="btn primary" id="addStudentBtn">Tambah Data Siswa</button></div><div class="table-wrap"><table><thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Tempat PKL</th><th>Guru</th><th>Pembimbing Lapangan</th><th>Tindakan</th></tr></thead><tbody>${state.students.map((student) => `<tr><td>${esc(student.nis)}</td><td>${esc(student.profiles?.full_name)}</td><td>${esc(student.class_name)}</td><td>${esc(student.internship_place)}</td><td>${esc(student.teacher?.full_name || '-')}</td><td>${esc(student.field_supervisor?.full_name || '-')}</td><td><button class="btn secondary edit-student" data-id="${student.id}">Edit</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Belum ada data siswa.</td></tr>'}</tbody></table></div>`;
+  $('#content').innerHTML = `<div class="section-head"><h3>Data Siswa</h3><button class="btn primary" id="addStudentBtn">Tambah Data Siswa</button></div><div class="table-wrap"><table><thead><tr><th>NISN</th><th>Nama</th><th>Kelas</th><th>Tempat PKL</th><th>Guru</th><th>Pembimbing Lapangan</th><th>Tindakan</th></tr></thead><tbody>${state.students.map((student) => `<tr><td>${esc(student.nis)}</td><td>${esc(student.profiles?.full_name)}</td><td>${esc(student.class_name)}</td><td>${esc(student.internship_place)}</td><td>${esc(student.teacher?.full_name || '-')}</td><td>${esc(student.field_supervisor?.full_name || '-')}</td><td><button class="btn secondary edit-student" data-id="${student.id}">Edit</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Belum ada data siswa.</td></tr>'}</tbody></table></div>`;
   $('#addStudentBtn').onclick = () => openStudentModal();
   document.querySelectorAll('.edit-student').forEach((button) => {
     button.onclick = () => openStudentModal(state.students.find((item) => item.id === button.dataset.id));
@@ -764,7 +764,7 @@ async function openStudentModal(existing = null) {
     sb.from('profiles').select('id,full_name').eq('role', 'teacher').eq('is_active', true),
     sb.from('profiles').select('id,full_name').eq('role', 'field_supervisor').eq('is_active', true),
   ]);
-  modal(existing ? 'Edit Data Siswa' : 'Tambah Data Siswa', `<form id="studentForm" class="form-grid"><label>Akun siswa<select name="id" required><option value="">Pilih siswa</option>${(students || []).map((item) => `<option value="${item.id}" ${existing?.id === item.id ? 'selected' : ''}>${esc(item.full_name)} - ${esc(item.email)}</option>`).join('')}</select></label><label>NIS<input name="nis" value="${esc(existing?.nis || '')}" required></label><label>Kelas<input name="class_name" value="${esc(existing?.class_name || 'XI')}" required></label><label>Tempat PKL/KPH/BKPH/RPH<input name="internship_place" value="${esc(existing?.internship_place || '')}" required></label><label>Guru pembimbing<select name="teacher_id"><option value="">Pilih guru</option>${(teachers || []).map((item) => `<option value="${item.id}" ${existing?.teacher_id === item.id ? 'selected' : ''}>${esc(item.full_name)}</option>`).join('')}</select></label><label>Pembimbing lapangan<select name="field_supervisor_id"><option value="">Pilih pembimbing</option>${(supervisors || []).map((item) => `<option value="${item.id}" ${existing?.field_supervisor_id === item.id ? 'selected' : ''}>${esc(item.full_name)}</option>`).join('')}</select></label><label>Tanggal mulai<input name="start_date" type="date" value="${existing?.start_date || ''}"></label><label>Tanggal selesai<input name="end_date" type="date" value="${existing?.end_date || ''}"></label><div class="wide actions"><button class="btn primary">Simpan</button><button type="button" class="btn secondary modal-close">Batal</button></div></form>`);
+  modal(existing ? 'Edit Data Siswa' : 'Tambah Data Siswa', `<form id="studentForm" class="form-grid"><label>Akun siswa<select name="id" required><option value="">Pilih siswa</option>${(students || []).map((item) => `<option value="${item.id}" ${existing?.id === item.id ? 'selected' : ''}>${esc(item.full_name)} - ${esc(item.email)}</option>`).join('')}</select></label><label>NISN<input name="nis" inputmode="numeric" value="${esc(existing?.nis || '')}" required placeholder="Nomor Induk Siswa Nasional"></label><label>Kelas<input name="class_name" value="${esc(existing?.class_name || 'XI')}" required></label><label>Tempat PKL/KPH/BKPH/RPH<input name="internship_place" value="${esc(existing?.internship_place || '')}" required></label><label>Guru pembimbing<select name="teacher_id"><option value="">Pilih guru</option>${(teachers || []).map((item) => `<option value="${item.id}" ${existing?.teacher_id === item.id ? 'selected' : ''}>${esc(item.full_name)}</option>`).join('')}</select></label><label>Pembimbing lapangan<select name="field_supervisor_id"><option value="">Pilih pembimbing</option>${(supervisors || []).map((item) => `<option value="${item.id}" ${existing?.field_supervisor_id === item.id ? 'selected' : ''}>${esc(item.full_name)}</option>`).join('')}</select></label><label>Tanggal mulai<input name="start_date" type="date" value="${existing?.start_date || ''}"></label><label>Tanggal selesai<input name="end_date" type="date" value="${existing?.end_date || ''}"></label><div class="wide actions"><button class="btn primary">Simpan</button><button type="button" class="btn secondary modal-close">Batal</button></div></form>`);
   $('#studentForm').onsubmit = async (event) => {
     event.preventDefault();
     const fields = Object.fromEntries(new FormData(event.currentTarget));
@@ -1339,7 +1339,7 @@ async function renderAttendance() {
       </div>
       <div class="table-wrap">
         <table class="attendance-table">
-          <thead><tr><th>Tanggal</th><th>Siswa</th><th>NIS/Kelas</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Lokasi</th><th>Catatan</th></tr></thead>
+          <thead><tr><th>Tanggal</th><th>Siswa</th><th>NISN/Kelas</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Lokasi</th><th>Catatan</th></tr></thead>
           <tbody id="attendanceRows"></tbody>
         </table>
       </div>
@@ -1528,7 +1528,7 @@ function exportAttendanceExcel() {
     ...Object.entries(meta.counts).map(([status, total]) => [status, total]),
   ];
   const dataRows = [
-    ['No', 'Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Tempat PKL', 'Jam Masuk', 'Jam Pulang', 'Status', 'Lokasi', 'Catatan'],
+    ['No', 'Tanggal', 'NISN', 'Nama Siswa', 'Kelas', 'Tempat PKL', 'Jam Masuk', 'Jam Pulang', 'Status', 'Lokasi', 'Catatan'],
     ...report.map((item) => [item.no, item.date, item.nis, item.name, item.className, item.internshipPlace, item.checkIn, item.checkOut, item.status, item.location, item.notes].map(safeSpreadsheetText)),
   ];
 
@@ -1548,7 +1548,7 @@ function exportAttendanceExcel() {
 }
 
 function attendanceReportTableHtml(report) {
-  return `<table><thead><tr><th>No</th><th>Tanggal</th><th>NIS</th><th>Nama Siswa</th><th>Kelas</th><th>Tempat PKL</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Lokasi</th><th>Catatan</th></tr></thead><tbody>${report.map((item) => `<tr><td>${item.no}</td><td>${esc(item.date)}</td><td>${esc(item.nis)}</td><td>${esc(item.name)}</td><td>${esc(item.className)}</td><td>${esc(item.internshipPlace)}</td><td>${esc(item.checkIn)}</td><td>${esc(item.checkOut)}</td><td>${esc(item.status)}</td><td>${esc(item.location)}</td><td>${esc(item.notes)}</td></tr>`).join('')}</tbody></table>`;
+  return `<table><thead><tr><th>No</th><th>Tanggal</th><th>NISN</th><th>Nama Siswa</th><th>Kelas</th><th>Tempat PKL</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Lokasi</th><th>Catatan</th></tr></thead><tbody>${report.map((item) => `<tr><td>${item.no}</td><td>${esc(item.date)}</td><td>${esc(item.nis)}</td><td>${esc(item.name)}</td><td>${esc(item.className)}</td><td>${esc(item.internshipPlace)}</td><td>${esc(item.checkIn)}</td><td>${esc(item.checkOut)}</td><td>${esc(item.status)}</td><td>${esc(item.location)}</td><td>${esc(item.notes)}</td></tr>`).join('')}</tbody></table>`;
 }
 
 function attendanceDocumentHtml(rows, autoPrint = false) {
@@ -1608,7 +1608,7 @@ function exportAttendancePdf() {
 
   documentPdf.autoTable({
     startY: 36,
-    head: [['No', 'Tanggal', 'NIS', 'Nama', 'Kelas', 'Tempat PKL', 'Masuk', 'Pulang', 'Status', 'Lokasi', 'Catatan']],
+    head: [['No', 'Tanggal', 'NISN', 'Nama', 'Kelas', 'Tempat PKL', 'Masuk', 'Pulang', 'Status', 'Lokasi', 'Catatan']],
     body: report.map((item) => [item.no, item.date, item.nis, item.name, item.className, item.internshipPlace, item.checkIn, item.checkOut, item.status, item.location, item.notes]),
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 6.5, cellPadding: 1.6, textColor: [23, 43, 77], valign: 'middle' },
