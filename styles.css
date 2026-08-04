@@ -344,7 +344,11 @@ button { -webkit-tap-highlight-color: transparent; }
 
 /* Journal and tables */
 .journal-summary { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
-.journal-summary > div { display: flex; align-items: baseline; gap: 9px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: #fff; box-shadow: var(--shadow-sm); }
+.journal-summary > div,
+.journal-summary > button { display: flex; align-items: baseline; gap: 9px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: #fff; box-shadow: var(--shadow-sm); }
+.journal-filter-card { justify-content: flex-start; }
+.journal-filter-card.is-active { border-color: rgba(26, 112, 78, .36); background: linear-gradient(145deg, #fff 58%, rgba(224, 245, 235, .88)); box-shadow: 0 12px 28px rgba(16, 74, 54, .12); }
+.journal-filter-card.is-active::after { opacity: 1; background: var(--forest-700); color: #fff; transform: translateX(2px); }
 .journal-summary strong { font-size: 22px; color: var(--forest-700); }
 .journal-summary span { color: var(--muted); font-size: 10px; font-weight: 750; }
 .data-panel { overflow: hidden; }

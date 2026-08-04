@@ -886,26 +886,38 @@ async function renderJournals() {
   const journalFilter = state.dashboardJournalFilter || 'all';
   const journalFilterLabels = {
     all: 'Semua jurnal',
-    approved: 'Jurnal disetujui',
+    draft: 'Jurnal draf',
     submitted: 'Jurnal menunggu validasi',
+    approved: 'Jurnal disetujui',
+    revision: 'Jurnal perlu perbaikan',
+    pending_deletion: 'Jurnal menunggu penghapusan',
   };
   const visibleJournals = journalFilter === 'all'
     ? state.journals
-    : state.journals.filter((item) => item.status === journalFilter);
+    : journalFilter === 'pending_deletion'
+      ? state.journals.filter((item) => {
+          const deletionRequest = latestDeletionRequest(item.id);
+          return deletionRequest && deletionRequest.status === 'pending';
+        })
+      : state.journals.filter((item) => item.status === journalFilter);
   const activeFilterBar = journalFilter === 'all'
     ? ''
-    : `<div class="dashboard-filter-bar"><div><span>Filter dari dashboard</span><strong>${journalFilterLabels[journalFilter] || 'Rekap jurnal'}</strong><small>${visibleJournals.length} data ditemukan</small></div><button type="button" class="btn secondary" id="clearDashboardJournalFilter">Tampilkan Semua Jurnal</button></div>`;
+    : `<div class="dashboard-filter-bar"><div><span>Filter jurnal aktif</span><strong>${journalFilterLabels[journalFilter] || 'Rekap jurnal'}</strong><small>${visibleJournals.length} data ditemukan</small></div><button type="button" class="btn secondary" id="clearDashboardJournalFilter">Tampilkan Semua Jurnal</button></div>`;
+
+  const journalSummaryCards = [
+    { key: 'all', count: state.journals.length, label: 'Semua jurnal' },
+    { key: 'draft', count: draftCount, label: 'Draf' },
+    { key: 'submitted', count: pendingCount, label: 'Menunggu' },
+    { key: 'approved', count: approvedCount, label: 'Disetujui' },
+    canAdd
+      ? { key: 'pending_deletion', count: pendingDeletionCount, label: 'Menunggu hapus' }
+      : { key: 'revision', count: revisionCount, label: 'Perlu perbaikan' },
+  ];
 
   $('#content').innerHTML = `<div class="page-intro"><div><span class="section-kicker">DOKUMENTASI PEMBELAJARAN</span><h3>${canAdd ? 'Jurnal Harian Saya' : 'Daftar Jurnal Siswa'}</h3><p>${canAdd ? 'Catat kegiatan, hasil belajar, kendala, refleksi, dan foto dokumentasi kegiatan PKL.' : 'Pantau catatan kegiatan dan perkembangan pembelajaran siswa selama PKL.'}</p></div>${canAdd ? '<button class="btn primary btn-emphasis" id="addJournalBtn">＋ Isi Jurnal Baru</button>' : ''}</div>
     ${featureWarning}
     ${activeFilterBar}
-    <div class="journal-summary">
-      <div><strong>${state.journals.length}</strong><span>Semua jurnal</span></div>
-      <div><strong>${draftCount}</strong><span>Draf</span></div>
-      <div><strong>${pendingCount}</strong><span>Menunggu</span></div>
-      <div><strong>${approvedCount}</strong><span>Disetujui</span></div>
-      <div><strong>${canAdd ? pendingDeletionCount : revisionCount}</strong><span>${canAdd ? 'Menunggu hapus' : 'Perlu perbaikan'}</span></div>
-    </div>
+    <div class="journal-summary clickable-summary">${journalSummaryCards.map((card) => `<button type="button" class="dashboard-link-card journal-filter-card ${journalFilter === card.key ? 'is-active' : ''}" data-journal-filter="${card.key}" aria-label="Tampilkan ${card.label}"><strong>${card.count}</strong><span>${card.label}</span></button>`).join('')}</div>
     ${renderTeacherDeletionPanel()}
     <div class="data-panel"><div class="panel-title"><div><h4>Riwayat Jurnal</h4><p>Jurnal terbaru ditampilkan paling atas.</p></div>${canAdd ? '<span class="policy-note">Draf/revisi dapat dihapus langsung. Jurnal disetujui memerlukan konfirmasi guru.</span>' : ''}</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Foto</th><th>Tahapan</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${visibleJournals.map((journal) => {
       const canModify = canAdd && ['draft', 'revision'].includes(journal.status);
@@ -924,6 +936,12 @@ async function renderJournals() {
   $('#clearDashboardJournalFilter')?.addEventListener('click', async () => {
     state.dashboardJournalFilter = 'all';
     await renderJournals();
+  });
+  document.querySelectorAll('.journal-filter-card').forEach((button) => {
+    button.addEventListener('click', async () => {
+      state.dashboardJournalFilter = button.dataset.journalFilter || 'all';
+      await renderJournals();
+    });
   });
   if (canAdd) $('#addJournalBtn').onclick = () => openJournalModal();
   document.querySelectorAll('.edit-journal').forEach((button) => {

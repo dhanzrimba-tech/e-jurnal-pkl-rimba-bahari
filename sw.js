@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v19-nisn';
+const CACHE = 'ejurnal-rbs-v20-journal-filter-links';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=18',
-  '/app.js?v=18',
-  '/config.js?v=18',
+  '/styles.css?v=19',
+  '/app.js?v=19',
+  '/config.js?v=19',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'
