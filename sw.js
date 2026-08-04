@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v21-journal-status-colors';
+const CACHE = 'ejurnal-rbs-v22-student-monitor-filters';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=20',
-  '/app.js?v=20',
-  '/config.js?v=20',
+  '/styles.css?v=21',
+  '/app.js?v=21',
+  '/config.js?v=21',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

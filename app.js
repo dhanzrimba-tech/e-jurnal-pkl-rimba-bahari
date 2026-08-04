@@ -751,11 +751,97 @@ async function renderStudents() {
     .order('nis');
   if (error) throw error;
   state.students = data || [];
-  $('#content').innerHTML = `<div class="section-head"><h3>Data Siswa</h3><button class="btn primary" id="addStudentBtn">Tambah Data Siswa</button></div><div class="table-wrap"><table><thead><tr><th>NISN</th><th>Nama</th><th>Kelas</th><th>Tempat PKL</th><th>Guru</th><th>Pembimbing Lapangan</th><th>Tindakan</th></tr></thead><tbody>${state.students.map((student) => `<tr><td>${esc(student.nis)}</td><td>${esc(student.profiles?.full_name)}</td><td>${esc(student.class_name)}</td><td>${esc(student.internship_place)}</td><td>${esc(student.teacher?.full_name || '-')}</td><td>${esc(student.field_supervisor?.full_name || '-')}</td><td><button class="btn secondary edit-student" data-id="${student.id}">Edit</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Belum ada data siswa.</td></tr>'}</tbody></table></div>`;
-  $('#addStudentBtn').onclick = () => openStudentModal();
-  document.querySelectorAll('.edit-student').forEach((button) => {
-    button.onclick = () => openStudentModal(state.students.find((item) => item.id === button.dataset.id));
+
+  const places = [...new Set(state.students.map((student) => String(student.internship_place || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
+  const teachers = [...new Map(state.students
+    .filter((student) => student.teacher_id && student.teacher?.full_name)
+    .map((student) => [student.teacher_id, student.teacher.full_name])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'id', { sensitivity: 'base' }));
+  const supervisors = [...new Map(state.students
+    .filter((student) => student.field_supervisor_id && student.field_supervisor?.full_name)
+    .map((student) => [student.field_supervisor_id, student.field_supervisor.full_name])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'id', { sensitivity: 'base' }));
+
+  $('#content').innerHTML = `<div class="page-intro student-data-intro"><div><span class="section-kicker">MONITORING PENEMPATAN PKL</span><h3>Data Siswa</h3><p>Gunakan pencarian, filter, dan pengurutan untuk memantau penempatan serta pembimbing setiap siswa.</p></div><button class="btn primary btn-emphasis" id="addStudentBtn">＋ Tambah Data Siswa</button></div>
+    <div class="student-monitor-summary">
+      <article><span>Total siswa</span><strong>${state.students.length}</strong><small>Data siswa terdaftar</small></article>
+      <article><span>Tempat PKL</span><strong>${places.length}</strong><small>Lokasi penempatan</small></article>
+      <article><span>Guru pembimbing</span><strong>${teachers.length}</strong><small>Guru yang ditugaskan</small></article>
+      <article><span>Pembimbing lapangan</span><strong>${supervisors.length}</strong><small>Pembimbing yang ditugaskan</small></article>
+    </div>
+    <div class="data-panel student-monitor-panel">
+      <div class="panel-title"><div><h4>Daftar dan Penempatan Siswa</h4><p id="studentResultInfo">Menampilkan ${state.students.length} siswa.</p></div><button type="button" class="btn secondary" id="resetStudentFilters">Reset Filter</button></div>
+      <div class="student-monitor-toolbar">
+        <label class="student-search-field"><span>Cari siswa</span><input id="studentSearch" type="search" placeholder="Nama, NISN, atau kelas..."></label>
+        <label><span>Tempat PKL</span><select id="studentPlaceFilter"><option value="">Semua tempat PKL</option>${places.map((place) => `<option value="${esc(place)}">${esc(place)}</option>`).join('')}</select></label>
+        <label><span>Guru Pembimbing</span><select id="studentTeacherFilter"><option value="">Semua guru</option><option value="__unassigned__">Belum ditetapkan</option>${teachers.map(([id, name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('')}</select></label>
+        <label><span>Pembimbing Lapangan</span><select id="studentSupervisorFilter"><option value="">Semua pembimbing</option><option value="__unassigned__">Belum ditetapkan</option>${supervisors.map(([id, name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('')}</select></label>
+        <label><span>Urutkan</span><select id="studentSort"><option value="nis-asc">NISN terkecil</option><option value="nis-desc">NISN terbesar</option><option value="name-asc">Nama A–Z</option><option value="name-desc">Nama Z–A</option><option value="place-asc">Tempat PKL A–Z</option><option value="teacher-asc">Guru A–Z</option><option value="supervisor-asc">Pembimbing Lapangan A–Z</option></select></label>
+      </div>
+      <div class="active-filter-summary" id="studentActiveFilters"></div>
+      <div class="table-wrap"><table class="student-monitor-table"><thead><tr><th>No.</th><th>NISN</th><th>Nama</th><th>Kelas</th><th>Tempat PKL</th><th>Guru</th><th>Pembimbing Lapangan</th><th>Tindakan</th></tr></thead><tbody id="studentRows"></tbody></table></div>
+    </div>`;
+
+  const compareText = (a, b) => String(a || '').localeCompare(String(b || ''), 'id', { sensitivity: 'base', numeric: true });
+  const matchesAssignment = (selected, id) => !selected || (selected === '__unassigned__' ? !id : id === selected);
+  const drawStudents = () => {
+    const query = ($('#studentSearch').value || '').trim().toLowerCase();
+    const place = $('#studentPlaceFilter').value;
+    const teacher = $('#studentTeacherFilter').value;
+    const supervisor = $('#studentSupervisorFilter').value;
+    const sort = $('#studentSort').value;
+
+    const visible = state.students.filter((student) => {
+      const searchText = `${student.nis || ''} ${student.profiles?.full_name || ''} ${student.profiles?.email || ''} ${student.class_name || ''}`.toLowerCase();
+      return (!query || searchText.includes(query))
+        && (!place || student.internship_place === place)
+        && matchesAssignment(teacher, student.teacher_id)
+        && matchesAssignment(supervisor, student.field_supervisor_id);
+    });
+
+    const sorters = {
+      'nis-asc': (a, b) => compareText(a.nis, b.nis),
+      'nis-desc': (a, b) => compareText(b.nis, a.nis),
+      'name-asc': (a, b) => compareText(a.profiles?.full_name, b.profiles?.full_name),
+      'name-desc': (a, b) => compareText(b.profiles?.full_name, a.profiles?.full_name),
+      'place-asc': (a, b) => compareText(a.internship_place, b.internship_place) || compareText(a.profiles?.full_name, b.profiles?.full_name),
+      'teacher-asc': (a, b) => compareText(a.teacher?.full_name || 'ZZZ', b.teacher?.full_name || 'ZZZ') || compareText(a.profiles?.full_name, b.profiles?.full_name),
+      'supervisor-asc': (a, b) => compareText(a.field_supervisor?.full_name || 'ZZZ', b.field_supervisor?.full_name || 'ZZZ') || compareText(a.profiles?.full_name, b.profiles?.full_name),
+    };
+    visible.sort(sorters[sort] || sorters['nis-asc']);
+
+    $('#studentRows').innerHTML = visible.map((student, index) => `<tr><td><span class="row-number">${index + 1}</span></td><td><strong>${esc(student.nis)}</strong></td><td><strong class="student-name-cell">${esc(student.profiles?.full_name || '-')}</strong><small>${esc(student.profiles?.email || '')}</small></td><td>${esc(student.class_name)}</td><td><span class="placement-cell">${esc(student.internship_place || '-')}</span></td><td>${student.teacher?.full_name ? esc(student.teacher.full_name) : '<span class="assignment-empty">Belum ditetapkan</span>'}</td><td>${student.field_supervisor?.full_name ? esc(student.field_supervisor.full_name) : '<span class="assignment-empty">Belum ditetapkan</span>'}</td><td><button class="btn secondary edit-student" data-id="${student.id}">Edit</button></td></tr>`).join('') || '<tr><td colspan="8" class="empty"><div class="empty-state"><span>⌕</span><strong>Data siswa tidak ditemukan</strong><p>Ubah pencarian atau reset filter untuk menampilkan data lainnya.</p></div></td></tr>';
+
+    $('#studentResultInfo').textContent = `Menampilkan ${visible.length} dari ${state.students.length} siswa.`;
+    const filterLabels = [];
+    if (query) filterLabels.push(`Pencarian: “${query}”`);
+    if (place) filterLabels.push(`Tempat PKL: ${place}`);
+    if (teacher) filterLabels.push(teacher === '__unassigned__' ? 'Guru belum ditetapkan' : `Guru: ${teachers.find(([id]) => id === teacher)?.[1] || '-'}`);
+    if (supervisor) filterLabels.push(supervisor === '__unassigned__' ? 'Pembimbing lapangan belum ditetapkan' : `Pembimbing: ${supervisors.find(([id]) => id === supervisor)?.[1] || '-'}`);
+    $('#studentActiveFilters').innerHTML = filterLabels.length
+      ? `<span>Filter aktif</span>${filterLabels.map((label) => `<strong>${esc(label)}</strong>`).join('')}`
+      : '<span>Menampilkan seluruh data siswa</span>';
+
+    document.querySelectorAll('.edit-student').forEach((button) => {
+      button.onclick = () => openStudentModal(state.students.find((item) => item.id === button.dataset.id));
+    });
+  };
+
+  ['studentSearch', 'studentPlaceFilter', 'studentTeacherFilter', 'studentSupervisorFilter', 'studentSort'].forEach((id) => {
+    const element = $(`#${id}`);
+    element.addEventListener(id === 'studentSearch' ? 'input' : 'change', drawStudents);
   });
+  $('#resetStudentFilters').onclick = () => {
+    $('#studentSearch').value = '';
+    $('#studentPlaceFilter').value = '';
+    $('#studentTeacherFilter').value = '';
+    $('#studentSupervisorFilter').value = '';
+    $('#studentSort').value = 'nis-asc';
+    drawStudents();
+  };
+  $('#addStudentBtn').onclick = () => openStudentModal();
+  drawStudents();
 }
 
 async function openStudentModal(existing = null) {

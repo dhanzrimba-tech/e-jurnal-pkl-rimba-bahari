@@ -932,3 +932,30 @@ tbody tr:last-child td { border-bottom: 0; }
   .account-summary-grid { grid-template-columns: 1fr; }
   .account-summary-card { min-height: 78px; }
 }
+
+
+/* v6.15 - Monitoring Data Siswa */
+.student-monitor-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+.student-monitor-summary article { position:relative; overflow:hidden; padding:16px 18px; border:1px solid var(--border); border-radius:16px; background:linear-gradient(145deg,#fff,#f6fbf8); box-shadow:var(--shadow-sm); }
+.student-monitor-summary article::after { content:''; position:absolute; right:-22px; bottom:-28px; width:82px; height:82px; border-radius:50%; background:rgba(26,112,78,.08); }
+.student-monitor-summary span { display:block; color:var(--muted); font-size:10px; font-weight:850; text-transform:uppercase; letter-spacing:.07em; }
+.student-monitor-summary strong { display:block; margin-top:5px; color:var(--forest-700); font-size:27px; line-height:1; }
+.student-monitor-summary small { display:block; margin-top:7px; color:#667085; font-size:10px; }
+.student-monitor-panel { overflow:hidden; }
+.student-monitor-toolbar { display:grid; grid-template-columns:minmax(190px,1.35fr) repeat(4,minmax(150px,1fr)); gap:11px; padding:16px 20px; background:#f8fbf9; border-bottom:1px solid var(--border); }
+.student-monitor-toolbar label { display:grid; gap:6px; min-width:0; }
+.student-monitor-toolbar label > span { color:#475467; font-size:10px; font-weight:850; text-transform:uppercase; letter-spacing:.055em; }
+.student-monitor-toolbar input,.student-monitor-toolbar select { width:100%; min-width:0; padding:10px 11px; border:1px solid var(--border); border-radius:10px; background:#fff; color:var(--navy-900); font:inherit; font-size:11px; outline:none; }
+.student-monitor-toolbar input:focus,.student-monitor-toolbar select:focus { border-color:var(--forest-500); box-shadow:0 0 0 3px rgba(26,112,78,.11); }
+.active-filter-summary { min-height:42px; display:flex; align-items:center; flex-wrap:wrap; gap:7px; padding:9px 20px; border-bottom:1px solid var(--border); background:#fff; }
+.active-filter-summary span { color:var(--muted); font-size:10px; font-weight:750; }
+.active-filter-summary strong { padding:5px 8px; border-radius:999px; background:var(--forest-50); color:var(--forest-700); font-size:9px; font-weight:850; }
+.student-monitor-table { min-width:1080px; }
+.row-number { display:inline-grid; width:27px; height:27px; place-items:center; border-radius:8px; background:var(--forest-50); color:var(--forest-700); font-weight:900; }
+.student-name-cell { display:block; color:var(--navy-900); }
+.student-name-cell + small { display:block; max-width:210px; margin-top:3px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.placement-cell { display:inline-block; max-width:230px; color:#344054; line-height:1.4; }
+.assignment-empty { display:inline-block; padding:4px 7px; border-radius:999px; background:#fff4e5; color:#b54708; font-size:9px; font-weight:800; white-space:nowrap; }
+@media(max-width:1150px){.student-monitor-toolbar{grid-template-columns:repeat(3,minmax(0,1fr));}.student-search-field{grid-column:span 2;}}
+@media(max-width:850px){.student-monitor-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.student-monitor-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));}.student-search-field{grid-column:1/-1;}}
+@media(max-width:560px){.student-monitor-summary{grid-template-columns:1fr 1fr;}.student-monitor-toolbar{grid-template-columns:1fr;}.student-search-field{grid-column:auto;}.student-monitor-panel .panel-title{align-items:stretch;flex-direction:column;}.student-monitor-panel .panel-title .btn{width:100%;}}
