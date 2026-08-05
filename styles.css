@@ -1107,3 +1107,8 @@ tbody tr:last-child td { border-bottom: 0; }
   .attendance-today-heading { align-items:flex-start; flex-direction:column; }
   .attendance-step-grid,.attendance-required-list,.attendance-selfie-gallery { grid-template-columns:1fr; }
 }
+
+/* v6.19 - administrator delete attendance */
+.attendance-row-actions { align-items: center; min-width: 190px; }
+.attendance-delete-summary p { margin: 7px 0; }
+@media(max-width:760px){.attendance-row-actions{min-width:0;}}

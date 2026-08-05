@@ -1877,16 +1877,85 @@ function drawAttendanceTable() {
       <td><div class="attendance-location-stack"><span>${esc(item.location || '-')}</span>${item.check_out_location ? `<small>Pulang: ${esc(item.check_out_location)}</small>` : ''}</div></td>
       <td>${attendanceSelfieStatusHtml(item)}</td>
       <td><div class="attendance-notes-stack"><span>${esc(item.notes || '-')}</span>${item.check_out_notes ? `<small>Pulang: ${esc(item.check_out_notes)}</small>` : ''}</div></td>
-      <td>${attendancePhotoEntries(item).length ? `<button type="button" class="btn secondary view-attendance-photo" data-id="${item.id}">Lihat Selfie</button>` : '<span class="muted">—</span>'}</td>
+      <td><div class="actions attendance-row-actions">${attendancePhotoEntries(item).length ? `<button type="button" class="btn secondary view-attendance-photo" data-id="${item.id}">Lihat Selfie</button>` : '<span class="muted">—</span>'}${state.profile.role === 'admin' ? `<button type="button" class="btn danger delete-attendance" data-id="${item.id}">Hapus Presensi</button>` : ''}</div></td>
     </tr>`;
   }).join('') || '<tr><td colspan="10" class="empty">Tidak ada data presensi yang sesuai dengan filter.</td></tr>';
 
   document.querySelectorAll('.view-attendance-photo').forEach((button) => {
     button.onclick = () => openAttendancePhotoGallery(state.attendance.find((item) => String(item.id) === String(button.dataset.id)));
   });
+  document.querySelectorAll('.delete-attendance').forEach((button) => {
+    button.onclick = () => openDeleteAttendanceModal(state.attendance.find((item) => String(item.id) === String(button.dataset.id)));
+  });
 
   const meta = $('#attendanceResultMeta');
   if (meta) meta.textContent = `${rows.length} data • ${getAttendanceReportPeriod(rows)}`;
+}
+
+
+function openDeleteAttendanceModal(attendance) {
+  if (state.profile.role !== 'admin') return toast('Hanya administrator yang dapat menghapus presensi.');
+  if (!attendance) return toast('Data presensi tidak ditemukan.');
+
+  const studentName = attendance.student?.full_name || 'Siswa';
+  const detail = attendance.student_detail || {};
+  const studentMeta = [detail.nis, detail.class_name].filter(Boolean).join(' • ') || '-';
+  const photoCount = attendancePhotoEntries(attendance).length;
+
+  modal('Hapus Presensi Siswa', `<div class="approval-warning teacher">
+    <strong>Presensi akan dihapus permanen.</strong>
+    <p>Data jam datang, jam pulang, lokasi, catatan, dan seluruh foto selfie terkait akan dibersihkan. Tindakan ini tidak dapat dibatalkan.</p>
+  </div>
+  <div class="card attendance-delete-summary">
+    <p><strong>Siswa:</strong> ${esc(studentName)}</p>
+    <p><strong>NISN/Kelas:</strong> ${esc(studentMeta)}</p>
+    <p><strong>Tanggal:</strong> ${esc(formatAttendanceDate(attendance.attendance_date, true))}</p>
+    <p><strong>Waktu:</strong> ${esc(formatAttendanceTime(attendance.check_in))} – ${esc(formatAttendanceTime(attendance.check_out))}</p>
+    <p><strong>Selfie:</strong> ${photoCount} foto</p>
+  </div>
+  <form id="deleteAttendanceForm" class="form-stack">
+    <label>Ketik <strong>HAPUS</strong> untuk mengonfirmasi
+      <input name="confirmation" autocomplete="off" placeholder="HAPUS" required>
+    </label>
+    <div class="actions">
+      <button type="submit" class="btn danger" id="deleteAttendanceSubmit">Hapus Presensi Permanen</button>
+      <button type="button" class="btn secondary modal-close">Batal</button>
+    </div>
+    <p class="form-help" id="deleteAttendanceStatus" aria-live="polite"></p>
+  </form>`);
+
+  $('#deleteAttendanceForm').onsubmit = async (event) => {
+    event.preventDefault();
+    const fields = Object.fromEntries(new FormData(event.currentTarget));
+    if (String(fields.confirmation || '').trim() !== 'HAPUS') {
+      return toast('Ketik HAPUS dengan huruf kapital untuk melanjutkan.');
+    }
+
+    const button = $('#deleteAttendanceSubmit');
+    const status = $('#deleteAttendanceStatus');
+    button.disabled = true;
+    button.textContent = 'Menghapus presensi...';
+    status.textContent = 'Membersihkan data presensi dan foto selfie. Mohon tunggu.';
+
+    try {
+      const result = await api('/api/delete-attendance', {
+        attendance_id: attendance.id,
+        confirmation: 'HAPUS',
+      }, { timeout: 45000 });
+      if (result.error) {
+        status.textContent = result.error;
+        return toast(`Gagal: ${result.error}`);
+      }
+      closeModal();
+      toast(result.warning || result.message || 'Presensi berhasil dihapus.');
+      await renderAttendance();
+    } finally {
+      if (document.body.contains(button)) {
+        button.disabled = false;
+        button.textContent = 'Hapus Presensi Permanen';
+      }
+    }
+  };
 }
 
 function getAttendanceReportPeriod(rows = getFilteredAttendanceRows()) {
