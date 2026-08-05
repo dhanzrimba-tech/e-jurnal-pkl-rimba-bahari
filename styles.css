@@ -1045,3 +1045,65 @@ tbody tr:last-child td { border-bottom: 0; }
 .journal-summary { grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); }
 @media(max-width:900px){.student-status-notification-grid{grid-template-columns:1fr}.guided-journal-toolbar{align-items:stretch;flex-direction:column}.guided-journal-toolbar>div{text-align:left}.report-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:600px){.student-notification-heading{flex-direction:column}.report-filter-grid{grid-template-columns:1fr}.report-action-buttons .btn{width:100%}}
+
+
+/* v6.18 - Presensi selfie datang dan pulang */
+.attendance-student-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+.attendance-action-btn { min-width:170px; }
+.attendance-action-btn:disabled { opacity:.62; cursor:not-allowed; transform:none; box-shadow:none; }
+.attendance-today-card { margin-bottom:16px; padding:18px 20px; border:1px solid var(--border); border-radius:18px; background:linear-gradient(145deg,#fff,#f6fbf8); box-shadow:var(--shadow-sm); }
+.attendance-today-card.complete { background:linear-gradient(145deg,#f6fff9,#e8f8ee); border-color:#b9e4c8; }
+.attendance-today-heading { display:flex; justify-content:space-between; gap:16px; align-items:center; margin-bottom:16px; }
+.attendance-today-heading > div:first-child span { display:block; color:var(--forest-700); font-size:10px; font-weight:900; letter-spacing:.09em; }
+.attendance-today-heading > div:first-child strong { display:block; margin-top:4px; color:var(--navy-900); font-size:17px; }
+.attendance-step-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.attendance-step { display:flex; align-items:center; gap:12px; padding:13px 14px; border:1px solid var(--border); border-radius:14px; background:#fff; }
+.attendance-step > span { width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:#eef3f1; color:var(--muted); font-weight:900; }
+.attendance-step strong,.attendance-step small { display:block; }
+.attendance-step strong { color:var(--navy-900); font-size:13px; }
+.attendance-step small { margin-top:3px; color:var(--muted); font-size:10px; }
+.attendance-step.active { border-color:#f0c567; background:#fffaf0; }
+.attendance-step.active > span { background:#ffedbd; color:#9a5b00; }
+.attendance-step.done { border-color:#bfe5cc; background:#f2fff6; }
+.attendance-step.done > span { background:#d7f5e1; color:#087443; }
+.attendance-step.locked { opacity:.62; }
+.attendance-time-policy { margin:13px 0 0; color:var(--muted); font-size:10px; font-weight:700; }
+.attendance-selfie-status { display:flex; gap:6px; flex-wrap:wrap; }
+.attendance-selfie-status span { display:inline-flex; align-items:center; padding:5px 8px; border-radius:999px; font-size:9px; font-weight:850; white-space:nowrap; }
+.attendance-selfie-status .done { background:#dcf8e6; color:#087443; }
+.attendance-selfie-status .missing { background:#f1f3f2; color:#667085; }
+.attendance-location-stack span,.attendance-location-stack small,.attendance-notes-stack span,.attendance-notes-stack small { display:block; }
+.attendance-location-stack small,.attendance-notes-stack small { margin-top:4px; color:var(--muted); font-size:9px; }
+.attendance-form-banner { padding:15px 17px; border-radius:15px; border-left:5px solid var(--forest-600); background:#edf8f2; }
+.attendance-form-banner.check-out { border-left-color:#d28a08; background:#fff8e8; }
+.attendance-form-banner span { display:block; color:var(--forest-700); font-size:9px; font-weight:900; letter-spacing:.09em; }
+.attendance-form-banner strong { display:block; margin-top:4px; color:var(--navy-900); font-size:18px; }
+.attendance-form-banner p { margin:6px 0 0; color:#526174; font-size:11px; line-height:1.5; }
+.required-mark { display:inline-flex; margin-left:6px; padding:2px 6px; border-radius:999px; background:#fee4e2; color:#b42318; font-size:8px; font-weight:900; text-transform:uppercase; }
+.selfie-capture-box { padding:16px; border:1px dashed #9bc9b3; border-radius:16px; background:#f8fcfa; }
+.selfie-capture-box > div:first-child strong { display:block; color:var(--navy-900); }
+.selfie-capture-box > div:first-child p { margin:4px 0 12px; color:var(--muted); font-size:10px; }
+.selfie-preview { margin-top:13px; }
+.selfie-empty { padding:22px; border-radius:12px; background:#fff; color:var(--muted); text-align:center; font-size:10px; }
+.selfie-preview-card { display:flex; gap:13px; align-items:center; padding:10px; border-radius:13px; background:#fff; border:1px solid var(--border); }
+.selfie-preview-card img { width:92px; height:92px; border-radius:12px; object-fit:cover; }
+.selfie-preview-card strong,.selfie-preview-card span { display:block; }
+.selfie-preview-card strong { color:var(--forest-700); font-size:12px; }
+.selfie-preview-card span { margin-top:4px; color:var(--muted); font-size:10px; }
+.attendance-required-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.attendance-required-list span { padding:9px 10px; border-radius:10px; background:#fff4f3; color:#9b2c24; font-size:9px; font-weight:800; }
+.attendance-required-list span.ready { background:#eaf9ef; color:#087443; }
+.attendance-required-list b { margin-right:5px; }
+.attendance-selfie-gallery { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:14px; }
+.attendance-selfie-card { overflow:hidden; border:1px solid var(--border); border-radius:14px; background:#fff; }
+.attendance-selfie-card > div { padding:11px 12px; }
+.attendance-selfie-card strong,.attendance-selfie-card span { display:block; }
+.attendance-selfie-card strong { color:var(--navy-900); font-size:12px; }
+.attendance-selfie-card span { margin-top:3px; color:var(--muted); font-size:9px; }
+.attendance-selfie-card img { display:block; width:100%; max-height:360px; object-fit:cover; }
+@media(max-width:760px){
+  .attendance-student-actions { width:100%; justify-content:stretch; }
+  .attendance-action-btn { flex:1; min-width:0; }
+  .attendance-today-heading { align-items:flex-start; flex-direction:column; }
+  .attendance-step-grid,.attendance-required-list,.attendance-selfie-gallery { grid-template-columns:1fr; }
+}

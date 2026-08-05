@@ -7,6 +7,7 @@ const sb = (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY)
 const PHOTO_BUCKET = 'journal-photos';
 const MAX_JOURNAL_PHOTOS = 3;
 const MAX_ATTENDANCE_PHOTOS = 2;
+const ATTENDANCE_TIMEZONE = 'Asia/Jakarta';
 const MAX_INPUT_PHOTO_SIZE = 10 * 1024 * 1024;
 const REMOVABLE_JOURNAL_STATUSES = ['draft', 'revision', 'rejected'];
 
@@ -1629,6 +1630,72 @@ function randomId() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+
+function attendanceDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ATTENDANCE_TIMEZONE,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date).reduce((result, part) => {
+    if (part.type !== 'literal') result[part.type] = part.value;
+    return result;
+  }, {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatAttendanceCapturedAt(value) {
+  if (!value) return '-';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: ATTENDANCE_TIMEZONE,
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  }).format(date);
+}
+
+function attendancePhotoEntries(attendance) {
+  if (!attendance) return [];
+  const entries = [];
+  if (attendance.check_in_photo_path) {
+    entries.push({
+      type: 'check-in',
+      label: 'Selfie Datang',
+      path: attendance.check_in_photo_path,
+      capturedAt: attendance.check_in_captured_at,
+    });
+  }
+  if (attendance.check_out_photo_path) {
+    entries.push({
+      type: 'check-out',
+      label: 'Selfie Pulang',
+      path: attendance.check_out_photo_path,
+      capturedAt: attendance.check_out_captured_at,
+    });
+  }
+  const known = new Set(entries.map((item) => item.path));
+  (attendance.photo_paths || []).forEach((path, index) => {
+    if (path && !known.has(path)) entries.push({ label: `Foto Presensi ${index + 1}`, path, capturedAt: null });
+  });
+  return entries;
+}
+
+function attendanceHasCheckIn(attendance) {
+  return Boolean(attendance?.check_in_photo_path);
+}
+
+function attendanceHasCheckOut(attendance) {
+  return Boolean(attendance?.check_out_photo_path);
+}
+
+function attendanceSelfieStatusHtml(attendance) {
+  const checkIn = attendanceHasCheckIn(attendance);
+  const checkOut = attendanceHasCheckOut(attendance);
+  return `<div class="attendance-selfie-status">
+    <span class="${checkIn ? 'done' : 'missing'}">${checkIn ? '✓' : '○'} Datang</span>
+    <span class="${checkOut ? 'done' : 'missing'}">${checkOut ? '✓' : '○'} Pulang</span>
+  </div>`;
+}
+
 async function renderAttendance() {
   let query = sb.from('attendance')
     .select('*,student:profiles!attendance_student_id_fkey(full_name)')
@@ -1657,6 +1724,12 @@ async function renderAttendance() {
 
   const canAdd = state.profile.role === 'student';
   const canExport = ['admin', 'teacher', 'field_supervisor'].includes(state.profile.role);
+  const todayKey = attendanceDateKey();
+  const todayAttendance = canAdd
+    ? state.attendance.find((item) => item.attendance_date === todayKey) || null
+    : null;
+  const checkInDone = attendanceHasCheckIn(todayAttendance);
+  const checkOutDone = attendanceHasCheckOut(todayAttendance);
   const students = [...new Map(state.attendance.map((item) => [
     item.student_id,
     item.student?.full_name || 'Siswa',
@@ -1672,13 +1745,25 @@ async function renderAttendance() {
           : 'Filter data kehadiran lalu unduh rekap dalam format Excel, Word, atau PDF.'}</p>
       </div>
       ${canAdd
-        ? '<button class="btn primary btn-emphasis" id="addAttendance">＋ Isi Presensi</button>'
+        ? `<div class="attendance-student-actions">
+            <button class="btn primary attendance-action-btn check-in" id="attendanceCheckIn" type="button" ${checkInDone ? 'disabled' : ''}>📸 ${checkInDone ? 'Datang Tercatat' : 'Selfie Datang'}</button>
+            <button class="btn secondary attendance-action-btn check-out" id="attendanceCheckOut" type="button" ${!checkInDone || checkOutDone ? 'disabled' : ''}>📸 ${checkOutDone ? 'Pulang Tercatat' : 'Selfie Pulang'}</button>
+          </div>`
         : `<div class="attendance-export-actions" aria-label="Ekspor rekap presensi">
             <button class="btn export-btn excel" id="exportAttendanceExcel" type="button">Excel</button>
             <button class="btn export-btn word" id="exportAttendanceWord" type="button">Word</button>
             <button class="btn export-btn pdf" id="exportAttendancePdf" type="button">PDF</button>
           </div>`}
     </div>
+
+    ${canAdd ? `<section class="attendance-today-card ${checkInDone && checkOutDone ? 'complete' : ''}">
+      <div class="attendance-today-heading"><div><span>PRESENSI HARI INI</span><strong>${esc(formatAttendanceDate(todayKey, true))}</strong></div>${attendanceSelfieStatusHtml(todayAttendance)}</div>
+      <div class="attendance-step-grid">
+        <article class="attendance-step ${checkInDone ? 'done' : 'active'}"><span>1</span><div><strong>Selfie Datang</strong><small>${checkInDone ? `Tercatat ${esc(formatAttendanceTime(todayAttendance.check_in))}` : 'Isi lokasi dan catatan, lalu ambil selfie.'}</small></div></article>
+        <article class="attendance-step ${checkOutDone ? 'done' : checkInDone ? 'active' : 'locked'}"><span>2</span><div><strong>Selfie Pulang</strong><small>${checkOutDone ? `Tercatat ${esc(formatAttendanceTime(todayAttendance.check_out))}` : checkInDone ? 'Tersedia setelah kegiatan selesai.' : 'Aktif setelah absen datang.'}</small></div></article>
+      </div>
+      <p class="attendance-time-policy">Jam masuk dan jam pulang tidak diketik manual. Waktu resmi dicatat sistem ketika selfie berhasil dikirim.</p>
+    </section>` : ''}
 
     ${canExport ? `
       <section class="data-panel attendance-filter-panel">
@@ -1709,7 +1794,10 @@ async function renderAttendance() {
       </div>
     </section>`;
 
-  if (canAdd) $('#addAttendance').onclick = () => openAttendance();
+  if (canAdd) {
+    $('#attendanceCheckIn')?.addEventListener('click', () => openAttendanceCheckIn(todayAttendance));
+    $('#attendanceCheckOut')?.addEventListener('click', () => openAttendanceCheckOut(todayAttendance));
+  }
   ['attendanceStart', 'attendanceEnd', 'attendanceStudent', 'attendanceStatus'].forEach((id) => {
     $(`#${id}`)?.addEventListener('change', drawAttendanceTable);
   });
@@ -1786,10 +1874,10 @@ function drawAttendanceTable() {
       <td>${esc(formatAttendanceTime(item.check_in))}</td>
       <td>${esc(formatAttendanceTime(item.check_out))}</td>
       <td><span class="attendance-status ${attendanceStatusClass(item.presence_status)}">${esc(item.presence_status || '-')}</span></td>
-      <td>${esc(item.location || '-')}</td>
-      <td>${(item.photo_paths || []).length ? `<span class="photo-count">▣ ${(item.photo_paths || []).length}</span>` : '<span class="muted">—</span>'}</td>
-      <td><span class="attendance-notes">${esc(item.notes || '-')}</span></td>
-      <td>${(item.photo_paths || []).length ? `<button type="button" class="btn secondary view-attendance-photo" data-id="${item.id}">Lihat Foto</button>` : '<span class="muted">—</span>'}</td>
+      <td><div class="attendance-location-stack"><span>${esc(item.location || '-')}</span>${item.check_out_location ? `<small>Pulang: ${esc(item.check_out_location)}</small>` : ''}</div></td>
+      <td>${attendanceSelfieStatusHtml(item)}</td>
+      <td><div class="attendance-notes-stack"><span>${esc(item.notes || '-')}</span>${item.check_out_notes ? `<small>Pulang: ${esc(item.check_out_notes)}</small>` : ''}</div></td>
+      <td>${attendancePhotoEntries(item).length ? `<button type="button" class="btn secondary view-attendance-photo" data-id="${item.id}">Lihat Selfie</button>` : '<span class="muted">—</span>'}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="10" class="empty">Tidak ada data presensi yang sesuai dengan filter.</td></tr>';
 
@@ -2012,97 +2100,180 @@ function exportAttendancePdf() {
 }
 
 async function openAttendancePhotoGallery(attendance) {
-  if (!attendance || !(attendance.photo_paths || []).length) return toast('Foto presensi tidak tersedia.');
-  const urls = await signedPhotoUrls(attendance.photo_paths || []);
-  const images = (attendance.photo_paths || []).map((path, index) => urls[path]
-    ? `<a href="${esc(urls[path])}" target="_blank" rel="noopener"><img src="${esc(urls[path])}" alt="Foto presensi ${index + 1}"></a>`
+  const entries = attendancePhotoEntries(attendance);
+  if (!attendance || !entries.length) return toast('Selfie presensi tidak tersedia.');
+  const urls = await signedPhotoUrls(entries.map((item) => item.path));
+  const images = entries.map((entry) => urls[entry.path]
+    ? `<article class="attendance-selfie-card"><div><strong>${esc(entry.label)}</strong><span>${esc(formatAttendanceCapturedAt(entry.capturedAt))}</span></div><a href="${esc(urls[entry.path])}" target="_blank" rel="noopener"><img src="${esc(urls[entry.path])}" alt="${esc(entry.label)}"></a></article>`
     : '').join('');
-  modal('Dokumentasi Presensi', `<div class="attendance-photo-detail"><p><strong>Tanggal:</strong> ${esc(formatAttendanceDate(attendance.attendance_date, true))}</p><p><strong>Siswa:</strong> ${esc(attendance.student?.full_name || state.profile.full_name || '-')}</p><div class="journal-gallery attendance-gallery">${images || '<span class="muted">Foto tidak dapat dibuka.</span>'}</div></div>`);
+  modal('Selfie Presensi', `<div class="attendance-photo-detail"><p><strong>Tanggal:</strong> ${esc(formatAttendanceDate(attendance.attendance_date, true))}</p><p><strong>Siswa:</strong> ${esc(attendance.student?.full_name || state.profile.full_name || '-')}</p><div class="attendance-selfie-gallery">${images || '<span class="muted">Selfie tidak dapat dibuka.</span>'}</div></div>`);
 }
 
-function openAttendance() {
-  const today = new Date().toISOString().slice(0, 10);
-  let selectedFiles = [];
-  modal('Isi Presensi', `<form id="attendanceForm" class="form-grid"><label>Tanggal<input name="attendance_date" type="date" value="${today}" required></label><label>Status<select name="presence_status"><option>Hadir</option><option>Sakit</option><option>Izin</option><option>Tanpa Keterangan</option><option>Dinas Luar</option></select></label><label>Jam masuk<input name="check_in" type="time"></label><label>Jam pulang<input name="check_out" type="time"></label><label class="wide">Lokasi<input name="location"></label><label class="wide">Catatan<textarea name="notes"></textarea></label>
-    <div class="wide photo-field attendance-photo-field"><strong>Foto Presensi (maksimal ${MAX_ATTENDANCE_PHOTOS})</strong><p class="form-help">Ambil foto langsung menggunakan kamera HP atau pilih dari galeri sebagai bukti kehadiran.</p><div class="photo-actions"><label class="btn secondary file-button">📷 Buka Kamera<input id="attendanceCameraInput" type="file" accept="image/*" capture="environment" hidden></label><label class="btn secondary file-button">🖼 Pilih Galeri<input id="attendanceGalleryInput" type="file" accept="image/*" multiple hidden></label></div><div id="attendancePhotoPreview" class="photo-grid"></div><p id="attendancePhotoStatus" class="form-help"></p></div>
-    <div class="wide actions"><button class="btn primary" id="saveAttendanceButton">Simpan Presensi</button><button type="button" class="btn secondary modal-close">Batal</button></div></form>`);
+function renderSelfieCapturePreview(selectedSelfie, previewId, statusId) {
+  const preview = $(`#${previewId}`);
+  const status = $(`#${statusId}`);
+  if (!preview || !status) return;
+  if (!selectedSelfie) {
+    preview.innerHTML = '<div class="selfie-empty">Belum ada selfie. Gunakan kamera depan untuk mengambil foto terbaru.</div>';
+    status.textContent = '';
+    return;
+  }
+  preview.innerHTML = `<div class="selfie-preview-card"><img src="${esc(selectedSelfie.previewUrl)}" alt="Pratinjau selfie"><div><strong>Selfie siap dikirim</strong><span>${esc(formatAttendanceCapturedAt(selectedSelfie.capturedAt))}</span></div></div>`;
+  status.textContent = 'Waktu resmi akan dicatat server saat selfie berhasil dikirim.';
+}
 
-  const drawPhotos = () => {
-    const preview = $('#attendancePhotoPreview');
-    preview.innerHTML = selectedFiles.map((item, index) => `<div class="photo-preview-item"><img src="${esc(item.previewUrl)}" alt="Foto presensi"><button type="button" class="photo-remove" data-index="${index}" aria-label="Hapus foto">×</button></div>`).join('') || '<div class="photo-empty">Belum ada foto presensi.</div>';
-    preview.querySelectorAll('[data-index]').forEach((button) => {
-      button.onclick = () => {
-        const index = Number(button.dataset.index);
-        URL.revokeObjectURL(selectedFiles[index].previewUrl);
-        selectedFiles.splice(index, 1);
-        drawPhotos();
-      };
+function setupAttendanceSelfieForm({ formId, inputId, previewId, statusId, submitId, requiredFieldNames, onSubmit }) {
+  const form = $(`#${formId}`);
+  const input = $(`#${inputId}`);
+  const submit = $(`#${submitId}`);
+  let selectedSelfie = null;
+
+  const refresh = () => {
+    const formData = new FormData(form);
+    const fieldsReady = requiredFieldNames.every((name) => String(formData.get(name) || '').trim().length >= 3);
+    const ready = fieldsReady && Boolean(selectedSelfie);
+    submit.disabled = !ready;
+    form.querySelectorAll('[data-required-check]').forEach((item) => {
+      const key = item.dataset.requiredCheck;
+      const ok = key === 'selfie'
+        ? Boolean(selectedSelfie)
+        : String(formData.get(key) || '').trim().length >= 3;
+      item.classList.toggle('ready', ok);
+      item.classList.toggle('missing', !ok);
+      item.querySelector('b').textContent = ok ? '✓' : '○';
     });
   };
-  const addFiles = (fileList) => {
-    const incoming = [...fileList];
-    const available = MAX_ATTENDANCE_PHOTOS - selectedFiles.length;
-    if (available <= 0) return toast(`Maksimal ${MAX_ATTENDANCE_PHOTOS} foto presensi.`);
-    incoming.slice(0, available).forEach((file) => {
-      if (!file.type.startsWith('image/')) return toast('Hanya file gambar yang diperbolehkan.');
-      if (file.size > MAX_INPUT_PHOTO_SIZE) return toast(`Foto ${file.name} terlalu besar. Maksimal 10 MB.`);
-      selectedFiles.push({ file, previewUrl: URL.createObjectURL(file) });
-    });
-    if (incoming.length > available) toast(`Hanya ${available} foto tambahan yang dapat dipilih.`);
-    drawPhotos();
-  };
-  $('#attendanceCameraInput').onchange = (event) => { addFiles(event.target.files); event.target.value = ''; };
-  $('#attendanceGalleryInput').onchange = (event) => { addFiles(event.target.files); event.target.value = ''; };
-  drawPhotos();
 
-  $('#attendanceForm').onsubmit = async (event) => {
+  input.onchange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast('Selfie harus berupa file gambar.');
+    if (file.size > MAX_INPUT_PHOTO_SIZE) return toast('Ukuran selfie maksimal 10 MB.');
+    if (selectedSelfie?.previewUrl) URL.revokeObjectURL(selectedSelfie.previewUrl);
+    selectedSelfie = { file, previewUrl: URL.createObjectURL(file), capturedAt: new Date() };
+    renderSelfieCapturePreview(selectedSelfie, previewId, statusId);
+    refresh();
+  };
+
+  requiredFieldNames.forEach((name) => form.elements[name]?.addEventListener('input', refresh));
+  form.onsubmit = async (event) => {
     event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) return;
-    const button = $('#saveAttendanceButton');
-    const originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = selectedFiles.length ? 'Mengunggah foto...' : 'Menyimpan...';
-    const fields = Object.fromEntries(new FormData(form));
-    fields.student_id = state.profile.id;
-    fields.check_in = fields.check_in || null;
-    fields.check_out = fields.check_out || null;
-    const uploadedPaths = [];
-    try {
-      const existingResult = await sb.from('attendance')
-        .select('id,photo_paths')
-        .eq('student_id', state.profile.id)
-        .eq('attendance_date', fields.attendance_date)
-        .maybeSingle();
-      if (existingResult.error) throw existingResult.error;
-      const oldPaths = existingResult.data?.photo_paths || [];
-      for (const selected of selectedFiles) {
-        const blob = await compressImage(selected.file);
-        const path = `${state.profile.id}/attendance/${fields.attendance_date}/${randomId()}.jpg`;
-        const uploadResult = await sb.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false });
-        if (uploadResult.error) throw new Error(`Foto presensi gagal diunggah: ${uploadResult.error.message}`);
-        uploadedPaths.push(path);
-      }
-      fields.photo_paths = uploadedPaths.length ? uploadedPaths : oldPaths;
-      const { error } = await sb.from('attendance').upsert(fields, { onConflict: 'student_id,attendance_date' });
-      if (error) throw error;
-      if (uploadedPaths.length && oldPaths.length) await sb.storage.from(PHOTO_BUCKET).remove(oldPaths);
-      selectedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
-      closeModal();
-      toast('Presensi dan foto berhasil disimpan');
-      await renderAttendance();
-    } catch (error) {
-      console.error(error);
-      if (uploadedPaths.length) await sb.storage.from(PHOTO_BUCKET).remove(uploadedPaths);
-      $('#attendancePhotoStatus').textContent = error.message;
-      toast(error.message, 5000);
-    } finally {
-      if (document.body.contains(button)) {
-        button.disabled = false;
-        button.textContent = originalText;
-      }
-    }
+    if (!form.reportValidity() || !selectedSelfie) return refresh();
+    await onSubmit({ form, selectedSelfie, submit });
   };
+  renderSelfieCapturePreview(null, previewId, statusId);
+  refresh();
+}
+
+function openAttendanceCheckIn(existingAttendance = null) {
+  const today = attendanceDateKey();
+  modal('Absen Datang', `<form id="attendanceCheckInForm" class="form-grid attendance-selfie-form">
+    <div class="wide attendance-form-banner check-in"><span>SELFIE DATANG</span><strong>${esc(formatAttendanceDate(today, true))}</strong><p>Jam masuk akan dicatat otomatis saat selfie berhasil dikirim. Jam tidak dapat diisi manual.</p></div>
+    <label class="wide">Lokasi datang <span class="required-mark">Wajib</span><input name="location" value="${esc(existingAttendance?.location || '')}" placeholder="Contoh: Kantor BPHL Wil VII Ciamis" minlength="3" required></label>
+    <label class="wide">Catatan kegiatan awal <span class="required-mark">Wajib</span><textarea name="notes" placeholder="Contoh: Hadir dan siap mengikuti kegiatan PKL hari ini." minlength="3" required>${esc(existingAttendance?.notes || '')}</textarea></label>
+    <div class="wide selfie-capture-box"><div><strong>Selfie datang</strong><p>Gunakan kamera depan. Foto menjadi dasar pencatatan jam masuk.</p></div><label class="btn primary file-button">🤳 Ambil Selfie Datang<input id="checkInSelfieInput" type="file" accept="image/*" capture="user" hidden></label><div id="checkInSelfiePreview" class="selfie-preview"></div><p id="checkInSelfieStatus" class="form-help"></p></div>
+    <div class="wide attendance-required-list"><span data-required-check="location"><b>○</b> Lokasi sudah diisi</span><span data-required-check="notes"><b>○</b> Catatan sudah diisi</span><span data-required-check="selfie"><b>○</b> Selfie datang tersedia</span></div>
+    <div class="wide actions"><button class="btn primary" id="submitCheckIn" disabled>Kirim Absen Datang</button><button type="button" class="btn secondary modal-close">Batal</button></div>
+  </form>`);
+
+  setupAttendanceSelfieForm({
+    formId: 'attendanceCheckInForm', inputId: 'checkInSelfieInput', previewId: 'checkInSelfiePreview', statusId: 'checkInSelfieStatus', submitId: 'submitCheckIn', requiredFieldNames: ['location', 'notes'],
+    onSubmit: async ({ form, selectedSelfie, submit }) => {
+      const originalText = submit.textContent;
+      submit.disabled = true;
+      submit.textContent = 'Mengirim selfie datang...';
+      let uploadedPath = null;
+      try {
+        const blob = await compressImage(selectedSelfie.file);
+        uploadedPath = `${state.profile.id}/attendance/${today}/check-in-${randomId()}.jpg`;
+        const upload = await sb.storage.from(PHOTO_BUCKET).upload(uploadedPath, blob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false });
+        if (upload.error) throw new Error(`Selfie datang gagal diunggah: ${upload.error.message}`);
+        const data = Object.fromEntries(new FormData(form));
+        const legacyPaths = attendancePhotoEntries(existingAttendance).map((item) => item.path).filter((path) => path !== existingAttendance?.check_in_photo_path);
+        const fields = {
+          student_id: state.profile.id,
+          attendance_date: today,
+          presence_status: 'Hadir',
+          location: data.location.trim(),
+          notes: data.notes.trim(),
+          check_in_photo_path: uploadedPath,
+          photo_paths: [...new Set([uploadedPath, ...legacyPaths])],
+        };
+        const result = existingAttendance?.id
+          ? await sb.from('attendance').update(fields).eq('id', existingAttendance.id)
+          : await sb.from('attendance').upsert(fields, { onConflict: 'student_id,attendance_date' });
+        if (result.error) throw result.error;
+        URL.revokeObjectURL(selectedSelfie.previewUrl);
+        closeModal();
+        toast('Absen datang berhasil. Jam masuk dicatat berdasarkan waktu selfie.');
+        await renderAttendance();
+      } catch (error) {
+        console.error(error);
+        if (uploadedPath) await sb.storage.from(PHOTO_BUCKET).remove([uploadedPath]);
+        $('#checkInSelfieStatus').textContent = error.message || 'Absen datang gagal dikirim.';
+        toast(error.message || 'Absen datang gagal dikirim.', 5000);
+      } finally {
+        if (document.body.contains(submit)) {
+          submit.textContent = originalText;
+          submit.disabled = false;
+        }
+      }
+    },
+  });
+}
+
+function openAttendanceCheckOut(existingAttendance) {
+  if (!attendanceHasCheckIn(existingAttendance)) return toast('Lakukan selfie datang terlebih dahulu.');
+  if (attendanceHasCheckOut(existingAttendance)) return toast('Absen pulang hari ini sudah tercatat.');
+  modal('Absen Pulang', `<form id="attendanceCheckOutForm" class="form-grid attendance-selfie-form">
+    <div class="wide attendance-form-banner check-out"><span>SELFIE PULANG</span><strong>Masuk ${esc(formatAttendanceTime(existingAttendance.check_in))}</strong><p>Jam pulang akan dicatat otomatis saat selfie pulang berhasil dikirim.</p></div>
+    <label class="wide">Lokasi pulang <span class="required-mark">Wajib</span><input name="check_out_location" placeholder="Contoh: Kantor BPHL Wil VII Ciamis" minlength="3" required></label>
+    <label class="wide">Catatan akhir kegiatan <span class="required-mark">Wajib</span><textarea name="check_out_notes" placeholder="Contoh: Kegiatan hari ini selesai dan saya meninggalkan lokasi PKL." minlength="3" required></textarea></label>
+    <div class="wide selfie-capture-box"><div><strong>Selfie pulang</strong><p>Gunakan kamera depan. Foto menjadi dasar pencatatan jam pulang.</p></div><label class="btn primary file-button">🤳 Ambil Selfie Pulang<input id="checkOutSelfieInput" type="file" accept="image/*" capture="user" hidden></label><div id="checkOutSelfiePreview" class="selfie-preview"></div><p id="checkOutSelfieStatus" class="form-help"></p></div>
+    <div class="wide attendance-required-list"><span data-required-check="check_out_location"><b>○</b> Lokasi pulang sudah diisi</span><span data-required-check="check_out_notes"><b>○</b> Catatan akhir sudah diisi</span><span data-required-check="selfie"><b>○</b> Selfie pulang tersedia</span></div>
+    <div class="wide actions"><button class="btn primary" id="submitCheckOut" disabled>Kirim Absen Pulang</button><button type="button" class="btn secondary modal-close">Batal</button></div>
+  </form>`);
+
+  setupAttendanceSelfieForm({
+    formId: 'attendanceCheckOutForm', inputId: 'checkOutSelfieInput', previewId: 'checkOutSelfiePreview', statusId: 'checkOutSelfieStatus', submitId: 'submitCheckOut', requiredFieldNames: ['check_out_location', 'check_out_notes'],
+    onSubmit: async ({ form, selectedSelfie, submit }) => {
+      const originalText = submit.textContent;
+      submit.disabled = true;
+      submit.textContent = 'Mengirim selfie pulang...';
+      let uploadedPath = null;
+      try {
+        const today = attendanceDateKey();
+        const blob = await compressImage(selectedSelfie.file);
+        uploadedPath = `${state.profile.id}/attendance/${today}/check-out-${randomId()}.jpg`;
+        const upload = await sb.storage.from(PHOTO_BUCKET).upload(uploadedPath, blob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false });
+        if (upload.error) throw new Error(`Selfie pulang gagal diunggah: ${upload.error.message}`);
+        const data = Object.fromEntries(new FormData(form));
+        const paths = [...new Set([...attendancePhotoEntries(existingAttendance).map((item) => item.path), uploadedPath])];
+        const update = await sb.from('attendance').update({
+          check_out_location: data.check_out_location.trim(),
+          check_out_notes: data.check_out_notes.trim(),
+          check_out_photo_path: uploadedPath,
+          photo_paths: paths,
+        }).eq('id', existingAttendance.id);
+        if (update.error) throw update.error;
+        URL.revokeObjectURL(selectedSelfie.previewUrl);
+        closeModal();
+        toast('Absen pulang berhasil. Jam pulang dicatat berdasarkan waktu selfie.');
+        await renderAttendance();
+      } catch (error) {
+        console.error(error);
+        if (uploadedPath) await sb.storage.from(PHOTO_BUCKET).remove([uploadedPath]);
+        $('#checkOutSelfieStatus').textContent = error.message || 'Absen pulang gagal dikirim.';
+        toast(error.message || 'Absen pulang gagal dikirim.', 5000);
+      } finally {
+        if (document.body.contains(submit)) {
+          submit.textContent = originalText;
+          submit.disabled = false;
+        }
+      }
+    },
+  });
 }
 
 async function renderReports() {

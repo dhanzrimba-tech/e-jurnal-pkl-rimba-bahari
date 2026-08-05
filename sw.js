@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v24-attendance-photo-notifications-reports';
+const CACHE = 'ejurnal-rbs-v25-attendance-selfie';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=23',
-  '/app.js?v=23',
-  '/config.js?v=23',
+  '/styles.css?v=24',
+  '/app.js?v=24',
+  '/config.js?v=24',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'
