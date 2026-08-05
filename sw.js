@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v26-admin-delete-attendance';
+const CACHE = 'ejurnal-rbs-v27-journal-description-min-50';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=25',
-  '/app.js?v=25',
-  '/config.js?v=25',
+  '/styles.css?v=26',
+  '/app.js?v=26',
+  '/config.js?v=26',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

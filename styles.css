@@ -1112,3 +1112,49 @@ tbody tr:last-child td { border-bottom: 0; }
 .attendance-row-actions { align-items: center; min-width: 190px; }
 .attendance-delete-summary p { margin: 7px 0; }
 @media(max-width:760px){.attendance-row-actions{min-width:0;}}
+
+
+/* v6.20 - Validasi minimal uraian jurnal */
+.field-assist {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 7px;
+}
+.description-help {
+  flex: 1;
+  margin: 0;
+  transition: color .18s ease;
+}
+.description-help.is-invalid { color: var(--danger); font-weight: 750; }
+.description-help.is-valid { color: var(--success); }
+.character-counter {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+  transition: background .18s ease, color .18s ease;
+}
+.character-counter.is-invalid { background: var(--danger-soft); color: var(--danger); }
+.character-counter.is-valid { background: var(--success-soft); color: var(--success); }
+.form-grid textarea.input-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, .10);
+}
+.form-grid textarea.input-valid {
+  border-color: rgba(6, 118, 71, .45);
+}
+#saveDraft:disabled,
+#submitJournal:disabled {
+  cursor: not-allowed;
+  opacity: .52;
+  filter: grayscale(.12);
+}
+@media (max-width: 560px) {
+  .field-assist { flex-direction: column; gap: 7px; }
+}
