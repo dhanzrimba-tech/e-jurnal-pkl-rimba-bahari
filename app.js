@@ -1198,6 +1198,7 @@ async function renderJournals() {
     state.journals = data || [];
   }
   const canAdd = state.profile.role === 'student';
+  const canAdminDelete = state.profile.role === 'admin';
   const draftCount = state.journals.filter((item) => item.status === 'draft').length;
   const pendingCount = state.journals.filter((item) => item.status === 'submitted').length;
   const approvedCount = state.journals.filter((item) => item.status === 'approved').length;
@@ -1270,7 +1271,7 @@ async function renderJournals() {
         : deletionRequest?.status === 'rejected'
           ? '<span class="mini-status rejected">Permintaan sebelumnya ditolak</span>'
           : '';
-      return `<tr><td><span class="date-cell">${esc(journal.journal_date)}</span></td><td>${esc(journal.student?.full_name || state.profile.full_name)}</td><td><strong class="activity-title">${esc(journal.activity_title)}</strong><small class="activity-location">${esc(journal.location || '-')}</small>${requestState}</td><td>${(journal.photo_paths || []).length ? `<span class="photo-count">▣ ${journal.photo_paths.length}</span>` : '<span class="muted">—</span>'}</td><td><span class="stage-text">${esc((journal.activity_stages || []).join(', ') || '-')}</span></td><td>${statusBadge(journal.status)}</td><td><div class="actions">${canModify ? `<button class="btn secondary edit-journal" data-id="${journal.id}">Edit</button>` : ''}${!canAdd && journal.status === 'submitted' ? `<button class="btn primary validate-journal" data-id="${journal.id}">Validasi</button>` : ''}<button class="btn secondary view-journal" data-id="${journal.id}">Lihat</button>${canDelete ? `<button class="btn danger delete-journal" data-id="${journal.id}">Hapus</button>` : ''}${canRequestApprovedDeletion ? `<button class="btn warn request-delete-journal" data-id="${journal.id}">${requestButtonLabel}</button>` : ''}</div></td></tr>`;
+      return `<tr><td><span class="date-cell">${esc(journal.journal_date)}</span></td><td>${esc(journal.student?.full_name || state.profile.full_name)}</td><td><strong class="activity-title">${esc(journal.activity_title)}</strong><small class="activity-location">${esc(journal.location || '-')}</small>${requestState}</td><td>${(journal.photo_paths || []).length ? `<span class="photo-count">▣ ${journal.photo_paths.length}</span>` : '<span class="muted">—</span>'}</td><td><span class="stage-text">${esc((journal.activity_stages || []).join(', ') || '-')}</span></td><td>${statusBadge(journal.status)}</td><td><div class="actions">${canModify ? `<button class="btn secondary edit-journal" data-id="${journal.id}">Edit</button>` : ''}${!canAdd && journal.status === 'submitted' ? `<button class="btn primary validate-journal" data-id="${journal.id}">Validasi</button>` : ''}<button class="btn secondary view-journal" data-id="${journal.id}">Lihat</button>${canDelete ? `<button class="btn danger delete-journal" data-id="${journal.id}">Hapus</button>` : ''}${canAdminDelete ? `<button class="btn danger admin-delete-journal" data-id="${journal.id}">Hapus Jurnal</button>` : ''}${canRequestApprovedDeletion ? `<button class="btn warn request-delete-journal" data-id="${journal.id}">${requestButtonLabel}</button>` : ''}</div></td></tr>`;
     }).join('') || `<tr><td colspan="7" class="empty"><div class="empty-state"><span>▤</span><strong>${journalFilter === 'all' ? 'Belum ada jurnal' : 'Tidak ada jurnal pada rekap ini'}</strong><p>${journalFilter === 'all' ? 'Mulai dokumentasikan kegiatan PKL Anda.' : 'Gunakan tombol Tampilkan Semua Jurnal untuk kembali ke seluruh data.'}</p></div></td></tr>`}</tbody></table></div></div>
     ${renderStudentDeletionHistory()}`;
   $('#clearDashboardJournalFilter')?.addEventListener('click', async () => {
@@ -1302,6 +1303,9 @@ async function renderJournals() {
   });
   document.querySelectorAll('.delete-journal').forEach((button) => {
     button.onclick = () => deleteJournal(state.journals.find((item) => item.id === button.dataset.id), button);
+  });
+  document.querySelectorAll('.admin-delete-journal').forEach((button) => {
+    button.onclick = () => openAdminDeleteJournalModal(state.journals.find((item) => item.id === button.dataset.id));
   });
   document.querySelectorAll('.request-delete-journal').forEach((button) => {
     button.onclick = () => openDeletionRequestModal(state.journals.find((item) => item.id === button.dataset.id));
@@ -1382,6 +1386,68 @@ function openDeletionReviewModal(request) {
   });
 }
 
+
+function openAdminDeleteJournalModal(journal) {
+  if (!journal || state.profile.role !== 'admin') {
+    return toast('Hanya administrator yang dapat menghapus jurnal dari menu ini.');
+  }
+  const reasonOptions = [
+    ['duplicate', 'Data jurnal duplikat'],
+    ['wrong_entry', 'Kesalahan tanggal atau isi jurnal'],
+    ['test_data', 'Data uji/dummy'],
+    ['student_request', 'Permintaan siswa'],
+    ['teacher_request', 'Permintaan guru pembimbing'],
+    ['inappropriate', 'Isi tidak sesuai ketentuan sekolah'],
+    ['other', 'Alasan lainnya'],
+  ];
+  modal('Hapus Jurnal oleh Administrator', `<div class="admin-delete-warning"><strong>Penghapusan berlaku untuk semua status jurnal.</strong><p>Jurnal berstatus draf, menunggu, disetujui, perlu perbaikan, maupun ditolak dapat dihapus. Jurnal dan foto dokumentasinya akan dihapus permanen.</p></div>
+    <div class="admin-delete-journal-summary">
+      <div><span>Siswa</span><strong>${esc(journal.student?.full_name || '-')}</strong></div>
+      <div><span>Tanggal</span><strong>${esc(journal.journal_date || '-')}</strong></div>
+      <div><span>Status</span><strong>${statusBadge(journal.status)}</strong></div>
+      <div class="wide"><span>Kegiatan</span><strong>${esc(journal.activity_title || '-')}</strong></div>
+    </div>
+    <form id="adminDeleteJournalForm" class="form-stack">
+      <label>Alasan penghapusan<select name="reason_code" required><option value="">Pilih alasan penghapusan</option>${reasonOptions.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select></label>
+      <label>Catatan administrator<textarea name="reason_detail" minlength="10" maxlength="1000" required placeholder="Jelaskan alasan penghapusan minimal 10 karakter."></textarea></label>
+      <label class="danger-confirm-choice"><input type="checkbox" name="delete_confirmation" value="yes" required><span>Saya memahami bahwa jurnal dan seluruh foto dokumentasinya akan dihapus permanen.</span></label>
+      <label>Ketik <strong>HAPUS</strong> untuk konfirmasi<input name="confirmation" autocomplete="off" required placeholder="HAPUS"></label>
+      <div class="actions"><button class="btn danger" id="confirmAdminDeleteJournal">Hapus Jurnal Permanen</button><button type="button" class="btn secondary modal-close">Batal</button></div>
+    </form>`);
+
+  $('#adminDeleteJournalForm').onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = Object.fromEntries(new FormData(form));
+    const reasonCode = String(values.reason_code || '').trim();
+    const reasonDetail = String(values.reason_detail || '').trim();
+    const confirmation = String(values.confirmation || '').trim();
+    if (!reasonCode) return toast('Pilih alasan penghapusan terlebih dahulu.');
+    if (reasonDetail.length < 10) return toast('Catatan administrator minimal 10 karakter.');
+    if (values.delete_confirmation !== 'yes') return toast('Centang persetujuan penghapusan permanen.');
+    if (confirmation !== 'HAPUS') return toast('Ketik HAPUS dengan huruf kapital untuk melanjutkan.');
+
+    const button = $('#confirmAdminDeleteJournal');
+    button.disabled = true;
+    button.textContent = 'Menghapus...';
+    const result = await api('/api/admin-delete-journal', {
+      journal_id: journal.id,
+      reason_code: reasonCode,
+      reason_detail: reasonDetail,
+      confirmation,
+    }, { timeout: 30000 });
+    if (result.error) {
+      button.disabled = false;
+      button.textContent = 'Hapus Jurnal Permanen';
+      return toast(result.error, 6000);
+    }
+    closeModal();
+    toast('Jurnal berhasil dihapus oleh administrator.');
+    if (result.warning) toast(result.warning, 6000);
+    await renderJournals();
+  };
+}
+
 async function deleteJournal(journal, button) {
   if (!journal || state.profile.role !== 'student' || journal.student_id !== state.profile.id) {
     return toast('Jurnal ini tidak dapat dihapus.');
@@ -1460,7 +1526,7 @@ async function openJournalModal(journal = null) {
     if (available <= 0) return toast(`Maksimal ${MAX_JOURNAL_PHOTOS} foto.`);
     for (const file of incoming.slice(0, available)) {
       if (!file.type.startsWith('image/')) {
-        toast('Hanya file gambar yang diperbolehkan.');
+        toast('Hanya file gambar yang diperbolehkan. Gunakan JPG atau PNG.');
         continue;
       }
       if (file.size > MAX_INPUT_PHOTO_SIZE) {
@@ -1620,43 +1686,80 @@ async function journalPhotoGallery(paths) {
   return `<div><strong>Dokumentasi:</strong><div class="journal-gallery">${images || '<span class="muted">Foto tidak dapat dibuka.</span>'}</div></div>`;
 }
 
-async function compressImage(file) {
-  let source;
-  let width;
-  let height;
-  let cleanup = () => {};
-
-  if ('createImageBitmap' in window) {
-    source = await createImageBitmap(file);
-    width = source.width;
-    height = source.height;
-    cleanup = () => source.close?.();
-  } else {
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
-    source = await new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('Foto tidak dapat dibaca.'));
-      image.src = objectUrl;
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve({
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      cleanup: () => URL.revokeObjectURL(objectUrl),
     });
-    width = source.naturalWidth;
-    height = source.naturalHeight;
-    cleanup = () => URL.revokeObjectURL(objectUrl);
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Format foto tidak dapat dibaca. Gunakan foto JPG, PNG, atau ambil foto langsung dari kamera.'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function decodeImageFile(file) {
+  if ('createImageBitmap' in window) {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        cleanup: () => bitmap.close?.(),
+      };
+    } catch (bitmapError) {
+      console.warn('createImageBitmap gagal, mencoba decoder gambar biasa.', bitmapError);
+    }
   }
 
-  const maxDimension = 1600;
-  const scale = Math.min(1, maxDimension / Math.max(width, height));
-  const targetWidth = Math.max(1, Math.round(width * scale));
-  const targetHeight = Math.max(1, Math.round(height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
-  const context = canvas.getContext('2d');
-  context.drawImage(source, 0, 0, targetWidth, targetHeight);
-  cleanup();
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Foto gagal dikompresi.')), 'image/jpeg', 0.82);
-  });
+  return loadImageElement(file);
+}
+
+async function compressImage(file) {
+  let decoded;
+  try {
+    decoded = await decodeImageFile(file);
+    const { source, width, height } = decoded;
+    if (!width || !height) throw new Error('Ukuran foto tidak valid.');
+
+    const maxDimension = 1600;
+    const scale = Math.min(1, maxDimension / Math.max(width, height));
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) throw new Error('Peramban tidak mendukung pengolahan foto.');
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, targetWidth, targetHeight);
+    context.drawImage(source, 0, 0, targetWidth, targetHeight);
+
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('Foto gagal dikompresi.')),
+        'image/jpeg',
+        0.82,
+      );
+    });
+  } catch (error) {
+    const rawMessage = String(error?.message || error || '');
+    if (/source image could not be decoded|image could not be decoded|decode/i.test(rawMessage)) {
+      throw new Error('Foto tidak dapat diproses oleh browser. Pilih foto JPG/PNG lain atau ambil ulang menggunakan kamera HP.');
+    }
+    throw error;
+  } finally {
+    decoded?.cleanup?.();
+  }
 }
 
 function randomId() {

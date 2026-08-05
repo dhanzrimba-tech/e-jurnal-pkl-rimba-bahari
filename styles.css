@@ -1158,3 +1158,18 @@ tbody tr:last-child td { border-bottom: 0; }
 @media (max-width: 560px) {
   .field-assist { flex-direction: column; gap: 7px; }
 }
+
+
+/* v6.22 - administrator delete any journal */
+.admin-delete-warning { margin-bottom: 16px; padding: 16px 18px; border-left: 5px solid var(--danger); border-radius: 14px; background: var(--danger-soft); color: #8f2d24; }
+.admin-delete-warning strong { display: block; margin-bottom: 6px; font-size: 15px; }
+.admin-delete-warning p { margin: 0; line-height: 1.55; }
+.admin-delete-journal-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+.admin-delete-journal-summary > div { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: #f8fbfa; }
+.admin-delete-journal-summary .wide { grid-column: 1/-1; }
+.admin-delete-journal-summary span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .05em; }
+.admin-delete-journal-summary strong { color: var(--navy-900); font-size: 13px; line-height: 1.45; }
+.danger-confirm-choice { display: flex !important; grid-template-columns: none !important; align-items: flex-start; gap: 10px !important; padding: 12px 14px; border: 1px solid #fecaca; border-radius: 12px; background: #fff5f5; }
+.danger-confirm-choice input { width: auto !important; margin-top: 2px; }
+.danger-confirm-choice span { color: #8f2d24; font-weight: 750; line-height: 1.45; }
+@media(max-width:760px){.admin-delete-journal-summary{grid-template-columns:1fr}.admin-delete-journal-summary .wide{grid-column:auto}}
