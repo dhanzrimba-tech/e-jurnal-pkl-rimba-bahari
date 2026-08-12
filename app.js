@@ -52,6 +52,8 @@ const state = {
   dashboardJournalFilter: 'all',
   journalStudentFilter: null,
   studentJournalAlerts: { approved: 0, revision: 0, rejected: 0, items: [] },
+  dailyComplianceAlerts: { today: '', activeInternship: true, attendanceMissing: false, journalMissing: false, journalToday: null, activeStudentCount: 0, missingAttendanceStudents: [], error: '' },
+  dailyReminderToastKey: '',
   reportJournals: [],
   finalReport: null,
   finalReportSettings: null,
@@ -213,6 +215,8 @@ async function enterApp(session) {
   }
 
   state.profile = data;
+  state.dailyComplianceAlerts = emptyDailyCompliance();
+  state.dailyReminderToastKey = '';
   $('#loginView').classList.add('hidden');
   $('#registerView').classList.add('hidden');
   $('#publicRegisterView').classList.add('hidden');
@@ -231,6 +235,8 @@ async function enterApp(session) {
 function showLogin() {
   state.session = null;
   state.profile = null;
+  state.dailyComplianceAlerts = emptyDailyCompliance();
+  state.dailyReminderToastKey = '';
   $('#appView').classList.add('hidden');
   $('#registerView').classList.add('hidden');
   $('#publicRegisterView').classList.add('hidden');
@@ -240,11 +246,35 @@ function showLogin() {
 function renderNav() {
   const items = menus[state.profile.role] || menus.student;
   $('#navMenu').innerHTML = items.map(([id, label]) => {
-    const rejectedCount = state.profile.role === 'student' && id === 'my-journal'
-      ? Number(state.studentJournalAlerts?.rejected || 0)
-      : 0;
-    const alertBadge = rejectedCount
-      ? `<span class="nav-alert-badge" title="${rejectedCount} jurnal ditolak">${rejectedCount > 99 ? '99+' : rejectedCount}</span>`
+    const role = state.profile.role;
+    const compliance = state.dailyComplianceAlerts || {};
+    const rejectedCount = Number(state.studentJournalAlerts?.rejected || 0);
+    let badgeValue = '';
+    let badgeTitle = '';
+
+    if (role === 'student' && id === 'my-attendance' && compliance.activeInternship !== false && compliance.attendanceMissing) {
+      badgeValue = '!';
+      badgeTitle = 'Presensi hari ini belum diisi';
+    }
+    if (role === 'student' && id === 'my-journal') {
+      if (compliance.activeInternship !== false && compliance.journalMissing) {
+        badgeValue = '!';
+        badgeTitle = rejectedCount ? `Jurnal hari ini belum diisi dan ${rejectedCount} jurnal ditolak` : 'Jurnal hari ini belum diisi';
+      } else if (rejectedCount) {
+        badgeValue = rejectedCount > 99 ? '99+' : String(rejectedCount);
+        badgeTitle = `${rejectedCount} jurnal ditolak`;
+      }
+    }
+    if (['admin', 'teacher'].includes(role) && id === 'attendance') {
+      const missingCount = Number(compliance.missingAttendanceStudents?.length || 0);
+      if (missingCount) {
+        badgeValue = missingCount > 99 ? '99+' : String(missingCount);
+        badgeTitle = `${missingCount} siswa belum presensi hari ini`;
+      }
+    }
+
+    const alertBadge = badgeValue
+      ? `<span class="nav-alert-badge" title="${esc(badgeTitle)}">${esc(badgeValue)}</span>`
       : '';
     return `<button class="nav-btn ${state.page === id ? 'active' : ''}" data-page="${id}"><span class="nav-icon">${navIcons[id] || ''}</span><span class="nav-label">${label}</span>${alertBadge}</button>`;
   }).join('');
@@ -327,9 +357,187 @@ function statusBadgeText(status) {
   return ({ approved: 'Disetujui', revision: 'Perlu diperbaiki', rejected: 'Ditolak', submitted: 'Menunggu validasi', draft: 'Draf' })[status] || status || '-';
 }
 
+function isStudentInInternshipPeriod(student, today) {
+  if (!student) return true;
+  if (student.start_date && today < student.start_date) return false;
+  if (student.end_date && today > student.end_date) return false;
+  return true;
+}
+
+function emptyDailyCompliance(today = attendanceDateKey()) {
+  return {
+    today,
+    activeInternship: true,
+    attendanceMissing: false,
+    journalMissing: false,
+    journalToday: null,
+    activeStudentCount: 0,
+    missingAttendanceStudents: [],
+    error: '',
+  };
+}
+
+async function loadDailyComplianceAlerts() {
+  const today = attendanceDateKey();
+  const role = state.profile?.role;
+  const next = emptyDailyCompliance(today);
+  if (!sb || !role) {
+    state.dailyComplianceAlerts = next;
+    return next;
+  }
+
+  try {
+    if (role === 'student') {
+      const detailResult = await sb.from('student_details')
+        .select('id,nis,class_name,internship_place,start_date,end_date')
+        .eq('id', state.profile.id)
+        .limit(1);
+      if (detailResult.error) throw detailResult.error;
+      const detail = detailResult.data?.[0] || null;
+      next.activeInternship = isStudentInInternshipPeriod(detail, today);
+      if (!next.activeInternship) {
+        state.dailyComplianceAlerts = next;
+        return next;
+      }
+
+      const [attendanceResult, journalResult] = await Promise.all([
+        sb.from('attendance')
+          .select('id,attendance_date,presence_status,check_in,check_out,check_in_photo_path,check_out_photo_path')
+          .eq('student_id', state.profile.id)
+          .eq('attendance_date', today)
+          .limit(1),
+        sb.from('daily_journals')
+          .select('id,journal_date,activity_title,status')
+          .eq('student_id', state.profile.id)
+          .eq('journal_date', today)
+          .limit(1),
+      ]);
+      if (attendanceResult.error) throw attendanceResult.error;
+      if (journalResult.error) throw journalResult.error;
+      next.attendanceMissing = !(attendanceResult.data || []).length;
+      next.journalToday = journalResult.data?.[0] || null;
+      next.journalMissing = !next.journalToday;
+      state.dailyComplianceAlerts = next;
+      return next;
+    }
+
+    if (['admin', 'teacher'].includes(role)) {
+      let studentQuery = sb.from('student_details')
+        .select('id,nis,class_name,internship_place,start_date,end_date,teacher_id,profiles!student_details_id_fkey(full_name,email,is_active,registration_status),teacher:profiles!student_details_teacher_id_fkey(full_name)');
+      if (role === 'teacher') studentQuery = studentQuery.eq('teacher_id', state.profile.id);
+      const studentResult = await studentQuery;
+      if (studentResult.error) throw studentResult.error;
+
+      const activeStudents = (studentResult.data || [])
+        .filter((item) => item.profiles && item.profiles.is_active !== false && item.profiles.registration_status !== 'pending')
+        .filter((item) => isStudentInInternshipPeriod(item, today));
+      next.activeStudentCount = activeStudents.length;
+      const studentIds = activeStudents.map((item) => item.id).filter(Boolean);
+      let attendanceRows = [];
+      if (studentIds.length) {
+        const attendanceResult = await sb.from('attendance')
+          .select('student_id,attendance_date,presence_status')
+          .eq('attendance_date', today)
+          .in('student_id', studentIds);
+        if (attendanceResult.error) throw attendanceResult.error;
+        attendanceRows = attendanceResult.data || [];
+      }
+      const attended = new Set(attendanceRows.map((item) => item.student_id));
+      next.missingAttendanceStudents = activeStudents
+        .filter((item) => !attended.has(item.id))
+        .sort((a, b) => String(a.profiles?.full_name || '').localeCompare(String(b.profiles?.full_name || ''), 'id'));
+      state.dailyComplianceAlerts = next;
+      return next;
+    }
+  } catch (error) {
+    console.warn('Notifikasi kewajiban harian tidak dapat dimuat:', error);
+    next.error = readableMessage(error, 'Notifikasi harian tidak dapat dimuat.');
+  }
+
+  state.dailyComplianceAlerts = next;
+  return next;
+}
+
+function renderStudentDailyComplianceAlert() {
+  if (state.profile?.role !== 'student') return '';
+  const info = state.dailyComplianceAlerts || emptyDailyCompliance();
+  if (info.error) return `<section class="daily-compliance-panel is-error"><div><span class="section-kicker">PENGINGAT HARIAN</span><h3>Status kewajiban hari ini belum dapat diperiksa</h3><p>${esc(info.error)}</p></div></section>`;
+  if (info.activeInternship === false) return '';
+
+  const attendanceDone = !info.attendanceMissing;
+  const journalDone = !info.journalMissing;
+  const journalText = info.journalToday
+    ? `${statusBadgeText(info.journalToday.status)}${info.journalToday.activity_title ? ` · ${info.journalToday.activity_title}` : ''}`
+    : 'Belum ada jurnal untuk tanggal hari ini.';
+  const summary = !attendanceDone && !journalDone
+    ? 'Presensi dan jurnal hari ini belum diisi.'
+    : !attendanceDone
+      ? 'Presensi hari ini belum diisi.'
+      : !journalDone
+        ? 'Jurnal hari ini belum diisi.'
+        : 'Presensi dan jurnal hari ini sudah tercatat.';
+
+  return `<section class="daily-compliance-panel ${attendanceDone && journalDone ? 'is-complete' : 'has-warning'}">
+    <div class="daily-compliance-heading"><div><span class="section-kicker">KEWAJIBAN HARI INI</span><h3>${esc(summary)}</h3><p>${esc(formatAttendanceDate(info.today, true))}. Lengkapi kegiatan pada hari yang sama agar data PKL tetap tertib.</p></div><span class="daily-compliance-state ${attendanceDone && journalDone ? 'complete' : 'warning'}">${attendanceDone && journalDone ? '✓ Lengkap' : '! Perlu dilengkapi'}</span></div>
+    <div class="daily-task-grid">
+      <button type="button" class="daily-task-card ${attendanceDone ? 'done' : 'missing'}" data-daily-action="attendance"><span class="daily-task-icon">${attendanceDone ? '✓' : '!'}</span><span><small>PRESENSI</small><strong>${attendanceDone ? 'Sudah tercatat' : 'Belum diisi'}</strong><p>${attendanceDone ? 'Presensi hari ini sudah tersedia.' : 'Lakukan absen datang melalui selfie.'}</p></span><b>→</b></button>
+      <button type="button" class="daily-task-card ${journalDone ? 'done' : 'missing'}" data-daily-action="journal"><span class="daily-task-icon">${journalDone ? '✓' : '!'}</span><span><small>JURNAL HARIAN</small><strong>${journalDone ? 'Sudah diisi' : 'Belum diisi'}</strong><p>${esc(journalText)}</p></span><b>→</b></button>
+    </div>
+  </section>`;
+}
+
+function renderStaffDailyAttendanceAlert() {
+  const role = state.profile?.role;
+  if (!['admin', 'teacher'].includes(role)) return '';
+  const info = state.dailyComplianceAlerts || emptyDailyCompliance();
+  if (info.error) return `<section class="daily-compliance-panel is-error"><div><span class="section-kicker">MONITORING PRESENSI</span><h3>Notifikasi presensi belum dapat dimuat</h3><p>${esc(info.error)}</p></div></section>`;
+  const missing = info.missingAttendanceStudents || [];
+  if (!missing.length) {
+    return `<section class="staff-attendance-alert all-complete"><span class="staff-alert-icon">✓</span><div><span class="section-kicker">MONITORING PRESENSI HARI INI</span><h3>Seluruh ${info.activeStudentCount || 0} siswa aktif sudah mengisi presensi</h3><p>${esc(formatAttendanceDate(info.today, true))}</p></div></section>`;
+  }
+  const scopeText = role === 'teacher' ? 'siswa bimbingan' : 'siswa aktif PKL';
+  return `<button type="button" class="staff-attendance-alert has-missing" id="missingAttendanceAlert">
+    <span class="staff-alert-icon">!</span><span class="staff-alert-copy"><span class="section-kicker">MONITORING PRESENSI HARI INI</span><strong>${missing.length} ${scopeText} belum mengisi presensi</strong><p>${esc(formatAttendanceDate(info.today, true))}. Klik untuk melihat daftar siswa yang belum absen.</p></span><span class="staff-alert-open">Lihat siswa →</span>
+  </button>`;
+}
+
+function openMissingAttendanceModal() {
+  const info = state.dailyComplianceAlerts || emptyDailyCompliance();
+  const missing = info.missingAttendanceStudents || [];
+  const isAdmin = state.profile?.role === 'admin';
+  if (!missing.length) return toast('Tidak ada siswa yang belum presensi hari ini.');
+  const rows = missing.map((student, index) => `<tr><td>${index + 1}</td><td><strong>${esc(student.profiles?.full_name || 'Siswa')}</strong><small class="table-subtext">${esc(student.profiles?.email || '')}</small></td><td>${esc(student.nis || '-')}<small class="table-subtext">${esc(student.class_name || '-')}</small></td><td>${esc(student.internship_place || '-')}</td>${isAdmin ? `<td>${esc(student.teacher?.full_name || 'Belum ditetapkan')}</td>` : ''}</tr>`).join('');
+  modal('Siswa Belum Presensi Hari Ini', `<div class="missing-attendance-modal-head"><span class="badge red">${missing.length} belum presensi</span><p>${esc(formatAttendanceDate(info.today, true))}. Daftar hanya mencakup siswa aktif yang sedang berada dalam periode PKL.</p></div><div class="table-wrap"><table class="missing-attendance-table"><thead><tr><th>No</th><th>Nama Siswa</th><th>NISN / Kelas</th><th>Tempat PKL</th>${isAdmin ? '<th>Guru Pembimbing</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div><div class="actions"><button type="button" class="btn primary" id="openAttendanceFromAlert">Buka Rekap Presensi</button><button type="button" class="btn secondary modal-close">Tutup</button></div>`);
+  $('#openAttendanceFromAlert')?.addEventListener('click', () => {
+    closeModal();
+    navigate('attendance');
+  });
+}
+
+function showDailyComplianceToast() {
+  const info = state.dailyComplianceAlerts || emptyDailyCompliance();
+  const role = state.profile?.role;
+  const key = `${state.profile?.id || role}:${info.today}`;
+  if (!role || state.dailyReminderToastKey === key) return;
+  let message = '';
+  if (role === 'student' && info.activeInternship !== false) {
+    if (info.attendanceMissing && info.journalMissing) message = 'Pengingat: presensi dan jurnal hari ini belum diisi.';
+    else if (info.attendanceMissing) message = 'Pengingat: presensi hari ini belum diisi.';
+    else if (info.journalMissing) message = 'Pengingat: jurnal hari ini belum diisi.';
+  } else if (['admin', 'teacher'].includes(role) && info.missingAttendanceStudents?.length) {
+    message = `${info.missingAttendanceStudents.length} siswa belum mengisi presensi hari ini. Buka notifikasi dashboard untuk melihat daftarnya.`;
+  }
+  if (message) {
+    state.dailyReminderToastKey = key;
+    toast(message, 5200);
+  }
+}
+
 async function renderDashboard() {
   const role = state.profile.role;
   if (role === 'student') await loadStudentJournalAlerts();
+  await loadDailyComplianceAlerts();
+  renderNav();
   let journalQuery = sb.from('daily_journals').select('id,status', { count: 'exact' });
   let attendanceQuery = sb.from('attendance').select('id', { count: 'exact' });
   if (role === 'student') {
@@ -370,6 +578,7 @@ async function renderDashboard() {
     <button type="button" class="metric-card dashboard-link-card" id="metricPendingJournals" aria-label="Buka rekap jurnal yang menunggu validasi"><span class="metric-icon warning">⌛</span><div><small>Menunggu</small><strong>${pending}</strong><p>Perlu validasi pembimbing</p><span class="metric-open-hint">Lihat jurnal menunggu</span></div></button>
     <button type="button" class="metric-card dashboard-link-card" id="metricAttendance" aria-label="Buka rekap presensi"><span class="metric-icon blue">${navIcons.attendance}</span><div><small>Presensi</small><strong>${attendance.count || 0}</strong><p>Data kehadiran tercatat</p><span class="metric-open-hint">Buka rekap presensi</span></div></button>
   </section>
+  ${role === 'student' ? renderStudentDailyComplianceAlert() : renderStaffDailyAttendanceAlert()}
   ${role === 'student' ? renderStudentJournalNotifications() : ''}
   <section class="dashboard-layout">
     <article class="card progress-card"><div class="card-heading"><div><span class="section-kicker">TARGET PEMBELAJARAN</span><h3>Progres PKL 40 Hari</h3></div><strong class="progress-number">${progress}%</strong></div><div class="progress progress-large"><span style="width:${progress}%"></span></div><div class="progress-meta"><span>${approved} jurnal disetujui</span><span>${Math.max(0, 40 - approved)} jurnal menuju target</span></div></article>
@@ -397,6 +606,11 @@ async function renderDashboard() {
   document.querySelectorAll('.student-status-notification, .notification-feed-item').forEach((button) => {
     button.addEventListener('click', () => openJournalRecap(button.dataset.status || 'all'));
   });
+  document.querySelectorAll('[data-daily-action]').forEach((button) => {
+    button.addEventListener('click', () => navigate(button.dataset.dailyAction === 'attendance' ? 'my-attendance' : 'my-journal'));
+  });
+  $('#missingAttendanceAlert')?.addEventListener('click', openMissingAttendanceModal);
+  showDailyComplianceToast();
 }
 
 async function renderUsers() {
@@ -1726,6 +1940,8 @@ async function openJournalModal(journal = null) {
       selectedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       closeModal();
       toast(status === 'draft' ? 'Draf disimpan' : 'Jurnal dikirim');
+      await loadDailyComplianceAlerts();
+      renderNav();
       await renderJournals();
     } catch (error) {
       console.error(error);
@@ -2512,6 +2728,8 @@ function openAttendanceCheckIn(existingAttendance = null) {
         URL.revokeObjectURL(selectedSelfie.previewUrl);
         closeModal();
         toast('Absen datang berhasil. Jam masuk dicatat berdasarkan waktu selfie.');
+        await loadDailyComplianceAlerts();
+        renderNav();
         await renderAttendance();
       } catch (error) {
         console.error(error);

@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v36-report-discussion-bibliography';
+const CACHE = 'ejurnal-rbs-v37-daily-compliance-alerts';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=36',
-  '/app.js?v=36',
-  '/config.js?v=36',
+  '/styles.css?v=37',
+  '/app.js?v=37',
+  '/config.js?v=37',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

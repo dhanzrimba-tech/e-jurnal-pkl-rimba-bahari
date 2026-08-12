@@ -1,6 +1,18 @@
-# E-Jurnal PKL Rimba Bahari v6.29
+# E-Jurnal PKL Rimba Bahari v6.30
 
-Versi 6.29 memperbaiki struktur laporan individu dan kelompok agar BAB III tidak berulang dan pembahasan lebih dekat dengan isi jurnal siswa.
+Versi 6.30 menambahkan monitoring kewajiban harian tanpa mengubah struktur database. Fitur laporan akademik v6.29 tetap dipertahankan.
+
+## Notifikasi kewajiban harian v6.30
+
+- Administrator menerima notifikasi jumlah siswa aktif PKL yang belum presensi pada tanggal hari ini.
+- Guru Pembimbing menerima notifikasi khusus siswa yang ditugaskan kepadanya dan belum presensi.
+- Notifikasi dapat diklik untuk membuka daftar nama siswa, NISN, kelas, dan tempat PKL. Administrator juga melihat nama Guru Pembimbing.
+- Siswa mendapat panel peringatan jika presensi atau jurnal pada tanggal hari ini belum diisi.
+- Tombol pada peringatan siswa langsung membuka menu Presensi Saya atau Jurnal Harian.
+- Sidebar menampilkan badge pada Presensi/Jurnal saat masih ada kewajiban yang belum selesai.
+- Siswa yang tanggal hari ini berada di luar periode PKL tidak dihitung. Bila tanggal mulai atau selesai belum diatur, siswa tetap dianggap aktif.
+- Tidak ada migration SQL baru untuk fitur ini.
+
 
 ## Perubahan utama
 
@@ -30,20 +42,21 @@ Versi 6.29 memperbaiki struktur laporan individu dan kelompok agar BAB III tidak
 
 Pencocokan sumber bersifat otomatis berbasis kata kunci. Guru Pembimbing tetap perlu memeriksa apakah sitasi yang dipilih sesuai dengan konteks kegiatan siswa sebelum laporan disetujui.
 
-## Upgrade dari v6.28
+## Upgrade dari v6.29
 
 Tidak ada perubahan database dan tidak perlu menjalankan SQL baru.
 
 Timpa file berikut di GitHub:
 
 - `app.js`
+- `styles.css`
 - `index.html`
 - `sw.js`
 - `package.json`
 - `VERSION.txt`
 - `README.md`
 
-`styles.css`, `config.js`, `vercel.json`, folder `api`, `assets`, dan `database` tidak perlu diubah.
+`config.js`, `vercel.json`, folder `api`, `assets`, dan `database` tidak perlu diubah.
 
 Setelah commit, tunggu Vercel berstatus **Ready**, lalu buka aplikasi dan tekan `Ctrl + F5`.
 
