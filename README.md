@@ -1,62 +1,60 @@
-# E-Jurnal PKL Rimba Bahari v6.28
+# E-Jurnal PKL Rimba Bahari v6.29
 
-Versi 6.28 menambahkan **Laporan PKL Kelompok per Lokasi Praktik** tanpa menghapus laporan individu dan Cetak Jurnal Harian.
+Versi 6.29 memperbaiki struktur laporan individu dan kelompok agar BAB III tidak berulang dan pembahasan lebih dekat dengan isi jurnal siswa.
 
-## Fitur baru v6.28
+## Perubahan utama
 
-- Kelompok terbentuk otomatis berdasarkan nilai **Tempat PKL** yang sama pada data siswa.
-- Normalisasi pengelompokan mengabaikan perbedaan huruf besar/kecil dan spasi berlebih.
-- Satu laporan kelompok dipakai bersama seluruh siswa pada lokasi tersebut.
-- Semua anggota kelompok dapat menyunting draf/revisi secara kolaboratif.
-- Pengajuan kelompok membutuhkan minimal 2 siswa pada lokasi yang sama.
-- Setiap anggota harus memiliki minimal 1 jurnal berstatus **Disetujui** sebelum laporan kelompok dapat diajukan.
-- BAB III, lampiran, rekap jurnal, total jam, pengetahuan/keterampilan, kendala, refleksi, catatan pembimbing, dan foto digabung otomatis dari seluruh anggota.
-- Hasil laporan kelompok tersedia sebagai **Pratinjau**, **Word (.doc)**, dan **Cetak / Simpan PDF**.
-- Cover dan lembar pengesahan menampilkan daftar anggota kelompok.
-- Guru Pembimbing yang memiliki siswa pada lokasi tersebut dapat meninjau, meminta revisi, atau menyetujui laporan kelompok.
-- Administrator dapat melihat seluruh kelompok berdasarkan lokasi praktik.
-- Pembimbing Lapangan dapat melihat dan mencetak kelompok sesuai lokasi siswa bimbingannya.
-- Laporan individu v6.27 tetap tersedia dan tidak berubah.
+- BAB III berganti nama menjadi **Pembahasan Praktik Kerja Lapangan**.
+- Isi BAB III tidak lagi berupa tabel rekap yang diulang dengan daftar pengetahuan, kendala, refleksi, dan catatan pembimbing.
+- Setiap jurnal berstatus **Disetujui** diringkas dan diuraikan per kegiatan berdasarkan tanggal, uraian, tahapan, pengetahuan/keterampilan, kendala, dan refleksi siswa.
+- Catatan pembimbing **tidak ditampilkan di BAB III**. Catatan tersebut tetap tersedia pada Lampiran Rekap Jurnal.
+- Setiap jurnal menggunakan **maksimal 1 foto**, yaitu foto pertama dari jurnal tersebut.
+- Foto ditempatkan langsung pada pembahasan kegiatan di BAB III.
+- Setiap foto mendapat nomor dan nama, misalnya **Gambar 3.1. Dokumentasi ...**.
+- Sistem membuat **Daftar Gambar** otomatis dari foto yang benar-benar digunakan.
+- BAB Dokumentasi dihapus. Penutup yang sebelumnya BAB V menjadi **BAB IV Penutup**.
+- Ditambahkan **Daftar Pustaka** sebelum lampiran.
+- Setiap pembahasan kegiatan mendapat sitasi ilmiah yang dipilih berdasarkan kata kunci jurnal. Daftar Pustaka hanya memuat sumber yang benar-benar digunakan pada pembahasan.
+- Berlaku pada laporan **individu dan kelompok**, baik **Pratinjau/Cetak PDF** maupun **Unduh Word (.doc)**.
 
-## Upgrade database
+## Pustaka ilmiah bawaan untuk pencocokan kegiatan
 
-Pastikan fitur laporan individu v6.26 sudah aktif dengan:
+1. Ardiana, S., & Suratman, B. (2021). Pengelolaan Arsip Dalam Mendukung Pelayanan Informasi Pada Bagian Tata Usaha di Dinas Sosial Kabupaten Ponorogo. *Jurnal Pendidikan Administrasi Perkantoran (JPAP), 9*(2), 335–348. https://doi.org/10.26740/jpap.v9n2.p335-348
+2. Rohmawati, L., & Puspasari, D. (2020). Pengelolaan Arsip Berbasis Aplikasi Surat Di Dinas Perpustakaan dan Kearsipan Provinsi Jawa Timur. *Jurnal Pendidikan Administrasi Perkantoran (JPAP), 8*(2), 180–193. https://doi.org/10.26740/jpap.v8n2.p180-193
+3. Priatama, A. R., Setiawan, Y., Mansur, I., & Masyhuri, M. (2022). Regression Models for Estimating Aboveground Biomass and Stand Volume Using Landsat-Based Indices in Post-Mining Area. *Jurnal Manajemen Hutan Tropika, 28*(1), 1–14. https://doi.org/10.7226/jtfm.28.1.1
+4. Priatna, D., Sudrajat, D. J., Sukma, A. D., Triastinurmiatiningsih, Surono, Rosadi, Ginarso, G. P., & Hartiningtias, D. (2026). Effectiveness of Biopriming Using Dark Septate Endophytes in Improving Seed Viability and Early Seedling Growth of Gmelina arborea Roxb. ex Sm. *Jurnal Manajemen Hutan Tropika, 32*(2), 183. https://doi.org/10.7226/jtfm.32.2.183
+5. Yovi, E. Y., Yamada, Y., Zaini, M. F., Kusumadewi, C. A. Y., & Marisiana, L. (2016). Improving the OSH Knowledge of Indonesian Forestry Workers by Using Safety Game Application: Tree Felling Supervisors and Operators. *Jurnal Manajemen Hutan Tropika, 22*(1), 75–85. https://doi.org/10.7226/jtfm.22.1.75
+6. Setiajiati, F., Hardjanto, H., & Hendrayanto, H. (2017). Strategies of Community Empowerment to Manage Protection Forest Sustainably. *Jurnal Manajemen Hutan Tropika, 23*(2), 71–80. https://doi.org/10.7226/jtfm.23.2.71
+7. Massiri, S. D., Malik, A., Golar, Hamzari, & Nugroho, B. (2020). Institutional Capacity of Forest Management Unit in Promoting Sustainable Community-Based Forest Management: Case Study of Forest Management Unit in Central Sulawesi Province, Indonesia. *Jurnal Manajemen Hutan Tropika, 26*(2), 169–177. https://doi.org/10.7226/jtfm.26.2.169
+8. Frahidayah, A. E., Murtini, W., & Susantiningrum, S. (2024). Pengaruh Pengalaman PKL, Kepercayaan Diri, dan Penguasaan Soft Skill terhadap Kesiapan Kerja. *Efisiensi: Kajian Ilmu Administrasi, 21*(1), 63–78. https://doi.org/10.21831/efisiensi.v21i1.64221
 
-`database/upgrade-final-pkl-report.sql`
+Pencocokan sumber bersifat otomatis berbasis kata kunci. Guru Pembimbing tetap perlu memeriksa apakah sitasi yang dipilih sesuai dengan konteks kegiatan siswa sebelum laporan disetujui.
 
-Kemudian jalankan **satu kali**:
+## Upgrade dari v6.28
 
-`database/upgrade-group-pkl-report.sql`
+Tidak ada perubahan database dan tidak perlu menjalankan SQL baru.
 
-melalui **Supabase Dashboard → SQL Editor**.
-
-SQL v6.28 membuat tabel `pkl_group_reports`, RPC pengelompokan/review, dan policy baca foto anggota kelompok. Script dirancang aman untuk dijalankan ulang.
-
-## File yang perlu ditimpa di GitHub
-
-Untuk upgrade dari v6.27, timpa:
+Timpa file berikut di GitHub:
 
 - `app.js`
 - `index.html`
-- `styles.css`
 - `sw.js`
 - `package.json`
 - `VERSION.txt`
 - `README.md`
 
-Tambahkan:
+`styles.css`, `config.js`, `vercel.json`, folder `api`, `assets`, dan `database` tidak perlu diubah.
 
-- `database/upgrade-group-pkl-report.sql`
+Setelah commit, tunggu Vercel berstatus **Ready**, lalu buka aplikasi dan tekan `Ctrl + F5`.
 
-Jangan mengganti `config.js`, environment variables Vercel, folder `api`, atau file database lama.
+## Pengujian yang disarankan
 
-## Urutan pemasangan
-
-1. Timpa file v6.28 di repository GitHub lama.
-2. Tambahkan `database/upgrade-group-pkl-report.sql`.
-3. Commit ke branch produksi.
-4. Jalankan SQL v6.28 di Supabase SQL Editor.
-5. Tunggu deployment Vercel berstatus Ready.
-6. Buka aplikasi dan tekan `Ctrl + F5`.
-7. Uji akun siswa pada **Laporan PKL → Laporan Kelompok**.
-8. Uji akun Guru Pembimbing pada bagian **Laporan Kelompok per Lokasi**.
+1. Pilih satu siswa yang memiliki beberapa jurnal Disetujui dan setiap jurnal memiliki lebih dari satu foto.
+2. Buka Laporan PKL dan pilih Pratinjau.
+3. Pastikan BAB III hanya muncul satu kali.
+4. Pastikan tiap jurnal dibahas secara ringkas dan hanya memakai satu foto.
+5. Cocokkan nomor Gambar pada BAB III dengan Daftar Gambar.
+6. Pastikan BAB IV adalah Penutup dan tidak ada BAB Dokumentasi.
+7. Pastikan Catatan Pembimbing tidak muncul di BAB III.
+8. Pastikan sitasi di BAB III memiliki pasangan yang sama pada Daftar Pustaka.
+9. Ulangi pengujian pada Laporan Kelompok dan Unduh Word.

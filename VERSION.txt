@@ -1,5 +1,5 @@
 E-Jurnal PKL Rimba Bahari
-Versi arsip lengkap: 6.28
+Versi arsip lengkap: 6.29
 Tanggal paket: 12 Agustus 2026
-Pembaruan: menambahkan Laporan PKL Kelompok yang terbentuk otomatis berdasarkan lokasi praktik (Tempat PKL) yang sama. Laporan kelompok menggabungkan anggota, jurnal disetujui, jam kegiatan, pengetahuan/keterampilan, kendala, refleksi, catatan pembimbing, serta foto dokumentasi. Tersedia Pratinjau, Word (.doc), dan Cetak/Simpan PDF. Guru Pembimbing dapat meninjau laporan kelompok, sedangkan Admin dan Pembimbing Lapangan dapat memantau sesuai hak akses.
-Catatan database: wajib jalankan database/upgrade-group-pkl-report.sql satu kali setelah upgrade-final-pkl-report.sql v6.26 sudah aktif.
+Pembaruan laporan: BAB III diubah menjadi Pembahasan Praktik Kerja Lapangan dan tidak lagi dicetak ganda. Rekap jurnal dibahas dalam bentuk ringkasan per kegiatan. Setiap jurnal menggunakan maksimal 1 foto yang ditempatkan pada BAB III, diberi nomor/keterangan Gambar, dan otomatis masuk ke Daftar Gambar. BAB dokumentasi dihapus sehingga Penutup menjadi BAB IV. Catatan pembimbing tidak ditampilkan pada BAB III dan tetap tersedia pada lampiran rekap jurnal. Sistem menambahkan sitasi jurnal ilmiah berdasarkan relevansi kata kunci kegiatan serta membentuk Daftar Pustaka hanya dari sumber yang dipakai. Berlaku untuk laporan individu dan kelompok, pada Pratinjau/PDF dan Word.
+Catatan database: tidak ada SQL baru untuk v6.29. Tetap gunakan database v6.28 yang sudah aktif.
