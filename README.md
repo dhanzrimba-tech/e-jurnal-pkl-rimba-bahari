@@ -1,71 +1,62 @@
-# E-Jurnal PKL Rimba Bahari v6.26
+# E-Jurnal PKL Rimba Bahari v6.28
 
-Versi 6.26 menambahkan **Laporan PKL akhir berbasis E-Jurnal** tanpa menghapus fitur Cetak Jurnal Harian yang sudah ada.
+Versi 6.28 menambahkan **Laporan PKL Kelompok per Lokasi Praktik** tanpa menghapus laporan individu dan Cetak Jurnal Harian.
 
-## Fitur baru v6.26
+## Fitur baru v6.28
 
-- Siswa memiliki menu **Laporan PKL** untuk menyusun laporan akhir.
-- Data kegiatan, tahapan, pengetahuan/keterampilan, kendala dan solusi, refleksi, catatan pembimbing, jam kegiatan, serta foto diambil otomatis dari jurnal berstatus **Disetujui**.
-- Siswa cukup mengisi data naratif yang tidak tersedia pada jurnal: profil instansi, unit penempatan, struktur organisasi/posisi penempatan, kata pengantar, kesimpulan, dan saran.
-- Alur laporan: **Draf → Diajukan → Perlu Revisi / Disetujui**.
-- Guru Pembimbing dapat melihat laporan siswa bimbingan, memberikan catatan revisi, dan menyetujui laporan.
-- Administrator dapat memantau seluruh status laporan dan mengatur nama sekolah, tahun pelajaran, Kepala Sekolah, NIP, judul laporan, lokasi pengesahan, latar belakang, tujuan, serta manfaat PKL standar.
-- Pembimbing Lapangan dapat melihat dan mencetak laporan siswa yang menjadi bimbingannya.
-- Pratinjau dan cetak/PDF menyusun: Cover, Lembar Pengesahan, Kata Pengantar, Daftar Isi, BAB I sampai BAB V, Rekap Jurnal, dan Dokumentasi Foto.
-- Laporan yang belum disetujui diberi watermark status agar tidak tertukar dengan laporan final.
+- Kelompok terbentuk otomatis berdasarkan nilai **Tempat PKL** yang sama pada data siswa.
+- Normalisasi pengelompokan mengabaikan perbedaan huruf besar/kecil dan spasi berlebih.
+- Satu laporan kelompok dipakai bersama seluruh siswa pada lokasi tersebut.
+- Semua anggota kelompok dapat menyunting draf/revisi secara kolaboratif.
+- Pengajuan kelompok membutuhkan minimal 2 siswa pada lokasi yang sama.
+- Setiap anggota harus memiliki minimal 1 jurnal berstatus **Disetujui** sebelum laporan kelompok dapat diajukan.
+- BAB III, lampiran, rekap jurnal, total jam, pengetahuan/keterampilan, kendala, refleksi, catatan pembimbing, dan foto digabung otomatis dari seluruh anggota.
+- Hasil laporan kelompok tersedia sebagai **Pratinjau**, **Word (.doc)**, dan **Cetak / Simpan PDF**.
+- Cover dan lembar pengesahan menampilkan daftar anggota kelompok.
+- Guru Pembimbing yang memiliki siswa pada lokasi tersebut dapat meninjau, meminta revisi, atau menyetujui laporan kelompok.
+- Administrator dapat melihat seluruh kelompok berdasarkan lokasi praktik.
+- Pembimbing Lapangan dapat melihat dan mencetak kelompok sesuai lokasi siswa bimbingannya.
+- Laporan individu v6.27 tetap tersedia dan tidak berubah.
 
-## Upgrade database wajib
+## Upgrade database
 
-Jalankan satu kali file berikut melalui **Supabase Dashboard → SQL Editor**:
+Pastikan fitur laporan individu v6.26 sudah aktif dengan:
 
-```text
-database/upgrade-final-pkl-report.sql
-```
+`database/upgrade-final-pkl-report.sql`
 
-SQL tersebut membuat tabel dan fungsi:
+Kemudian jalankan **satu kali**:
 
-- `pkl_reports`
-- `pkl_report_settings`
-- `save_pkl_report(...)`
-- `submit_pkl_report()`
-- `review_pkl_report(...)`
+`database/upgrade-group-pkl-report.sql`
 
-SQL aman dijalankan ulang dan menggunakan RLS serta RPC supaya siswa tidak dapat menetapkan sendiri status persetujuan laporan.
+melalui **Supabase Dashboard → SQL Editor**.
 
-## Update GitHub dari v6.25
+SQL v6.28 membuat tabel `pkl_group_reports`, RPC pengelompokan/review, dan policy baca foto anggota kelompok. Script dirancang aman untuk dijalankan ulang.
 
-Timpa file berikut:
+## File yang perlu ditimpa di GitHub
 
-```text
-app.js
-index.html
-styles.css
-sw.js
-package.json
-VERSION.txt
-README.md
-```
+Untuk upgrade dari v6.27, timpa:
 
-Tambahkan file baru:
+- `app.js`
+- `index.html`
+- `styles.css`
+- `sw.js`
+- `package.json`
+- `VERSION.txt`
+- `README.md`
 
-```text
-database/upgrade-final-pkl-report.sql
-```
+Tambahkan:
 
-Folder `api/`, aset, `config.js`, `vercel.json`, dan migration database lama tetap dipertahankan.
+- `database/upgrade-group-pkl-report.sql`
 
-Setelah commit dan deployment Vercel selesai, lakukan **Ctrl + F5** atau tutup dan buka kembali PWA agar service worker v33 aktif.
+Jangan mengganti `config.js`, environment variables Vercel, folder `api`, atau file database lama.
 
-## Pengujian minimum
+## Urutan pemasangan
 
-1. Login siswa, buka **Laporan PKL**, isi data naratif dan simpan draf.
-2. Pastikan jurnal yang akan masuk laporan sudah berstatus **Disetujui**.
-3. Siswa klik **Ajukan ke Guru Pembimbing**.
-4. Login Guru Pembimbing, buka **Laporan PKL Siswa**, lalu pilih **Tinjau**.
-5. Uji **Minta Revisi** dan **Setujui Laporan**.
-6. Buka **Pratinjau** dan **Cetak / Simpan PDF**, lalu pastikan foto dokumentasi muncul.
-7. Login Administrator, cek **Laporan PKL** dan simpan pengaturan format sekolah.
-
-## Catatan keamanan
-
-Password autentikasi tetap tidak disimpan atau ditampilkan dalam bentuk terbaca. Fitur Bantuan Password Administrator dari v6.25 tetap dipertahankan.
+1. Timpa file v6.28 di repository GitHub lama.
+2. Tambahkan `database/upgrade-group-pkl-report.sql`.
+3. Commit ke branch produksi.
+4. Jalankan SQL v6.28 di Supabase SQL Editor.
+5. Tunggu deployment Vercel berstatus Ready.
+6. Buka aplikasi dan tekan `Ctrl + F5`.
+7. Uji akun siswa pada **Laporan PKL → Laporan Kelompok**.
+8. Uji akun Guru Pembimbing pada bagian **Laporan Kelompok per Lokasi**.

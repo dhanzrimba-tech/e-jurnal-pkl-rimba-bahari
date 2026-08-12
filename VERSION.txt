@@ -1,5 +1,5 @@
 E-Jurnal PKL Rimba Bahari
-Versi arsip lengkap: 6.26
+Versi arsip lengkap: 6.28
 Tanggal paket: 12 Agustus 2026
-Pembaruan: fitur Laporan PKL akhir berbasis jurnal untuk siswa, alur Draft → Diajukan → Perlu Revisi/Disetujui, review Guru Pembimbing, monitoring Administrator, pengaturan identitas laporan sekolah, pratinjau dan cetak/PDF lengkap dengan dokumentasi foto serta lampiran jurnal.
-Catatan instalasi: jalankan database/upgrade-final-pkl-report.sql satu kali di Supabase SQL Editor.
+Pembaruan: menambahkan Laporan PKL Kelompok yang terbentuk otomatis berdasarkan lokasi praktik (Tempat PKL) yang sama. Laporan kelompok menggabungkan anggota, jurnal disetujui, jam kegiatan, pengetahuan/keterampilan, kendala, refleksi, catatan pembimbing, serta foto dokumentasi. Tersedia Pratinjau, Word (.doc), dan Cetak/Simpan PDF. Guru Pembimbing dapat meninjau laporan kelompok, sedangkan Admin dan Pembimbing Lapangan dapat memantau sesuai hak akses.
+Catatan database: wajib jalankan database/upgrade-group-pkl-report.sql satu kali setelah upgrade-final-pkl-report.sql v6.26 sudah aktif.

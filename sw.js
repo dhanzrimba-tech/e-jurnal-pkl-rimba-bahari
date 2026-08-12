@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v33-final-pkl-report';
+const CACHE = 'ejurnal-rbs-v35-group-report';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=33',
-  '/app.js?v=33',
-  '/config.js?v=33',
+  '/styles.css?v=35',
+  '/app.js?v=35',
+  '/config.js?v=35',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'
