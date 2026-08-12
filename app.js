@@ -23,6 +23,7 @@ const pageDescriptions = {
   attendance: 'Rekap kehadiran selama pelaksanaan PKL',
   'my-attendance': 'Catat kehadiran dan waktu kegiatan Anda',
   reports: 'Rekap data dan laporan kegiatan PKL',
+  'final-report': 'Penyusunan, peninjauan, dan cetak laporan akhir PKL berbasis jurnal',
 };
 
 const navIcons = {
@@ -37,6 +38,7 @@ const navIcons = {
   attendance: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2Zm0 16H5V9h14v11Zm-7-2 5-5-1.41-1.41L12 15.17l-1.59-1.58L9 15l3 3Z"/></svg>',
   'my-attendance': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2Zm0 16H5V9h14v11Zm-7-2 5-5-1.41-1.41L12 15.17l-1.59-1.58L9 15l3 3Z"/></svg>',
   reports: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16v2H4v-2Zm2-2V9h3v8H6Zm5 0V3h3v14h-3Zm5 0v-6h3v6h-3Z"/></svg>',
+  'final-report': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm8 2v5h5M8 13h8v2H8v-2Zm0 4h8v2H8v-2Z"/></svg>',
 };
 const state = {
   session: null,
@@ -51,6 +53,10 @@ const state = {
   journalStudentFilter: null,
   studentJournalAlerts: { approved: 0, revision: 0, rejected: 0, items: [] },
   reportJournals: [],
+  finalReport: null,
+  finalReportSettings: null,
+  finalReportStudents: [],
+  finalReportFeatureReady: true,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -77,20 +83,20 @@ const menus = {
     ['dashboard', 'Dashboard'], ['users', 'Akun Pengguna'],
     ['registrations', 'Pendaftaran Siswa'], ['students', 'Data Siswa'],
     ['journals', 'Semua Jurnal'], ['attendance', 'Presensi'],
-    ['reports', 'Laporan'],
+    ['reports', 'Laporan Jurnal'], ['final-report', 'Laporan PKL'],
   ],
   student: [
     ['dashboard', 'Dashboard'], ['my-journal', 'Jurnal Harian'],
-    ['my-attendance', 'Presensi Saya'], ['reports', 'Laporan Saya'],
+    ['my-attendance', 'Presensi Saya'], ['reports', 'Cetak Jurnal'], ['final-report', 'Laporan PKL'],
   ],
   teacher: [
     ['dashboard', 'Dashboard'], ['guided-students', 'Siswa Bimbingan'],
     ['journals', 'Monitoring Jurnal'], ['guided-journals', 'Semua Jurnal Bimbingan'],
-    ['attendance', 'Kehadiran Siswa'], ['reports', 'Cetak Laporan'],
+    ['attendance', 'Kehadiran Siswa'], ['reports', 'Cetak Jurnal'], ['final-report', 'Laporan PKL Siswa'],
   ],
   field_supervisor: [
     ['dashboard', 'Dashboard'], ['journals', 'Validasi Jurnal'],
-    ['attendance', 'Validasi Presensi'], ['reports', 'Penilaian & Laporan'],
+    ['attendance', 'Validasi Presensi'], ['reports', 'Penilaian & Jurnal'], ['final-report', 'Laporan PKL'],
   ],
 };
 
@@ -267,6 +273,7 @@ async function navigate(page) {
     else if (page === 'guided-students') await renderGuidedStudents();
     else if (page === 'journals' || page === 'my-journal' || page === 'guided-journals') await renderJournals();
     else if (page === 'attendance' || page === 'my-attendance') await renderAttendance();
+    else if (page === 'final-report') await renderFinalReport();
     else await renderReports();
   } catch (error) {
     console.error(error);
@@ -2691,6 +2698,423 @@ async function printDailyJournalReport(rows) {
   </style></head><body><button class="print-actions" onclick="window.print()">Cetak / Simpan PDF</button><header class="report-header"><h1>LAPORAN JURNAL HARIAN PKL</h1><p>SMK Kehutanan Rimba Bahari Sumedang</p><p>${state.profile.role === 'teacher' ? 'Dicetak oleh Guru Pembimbing' : 'Dicetak oleh'}: ${esc(state.profile.full_name)} · ${esc(new Intl.DateTimeFormat('id-ID',{dateStyle:'long'}).format(new Date()))}</p></header>${entries}<script>window.onload=()=>setTimeout(()=>window.print(),500);<\/script></body></html>`);
   printWindow.document.close();
 }
+
+const DEFAULT_PKL_REPORT_SETTINGS = {
+  id: 1,
+  school_name: 'SMK Kehutanan Rimba Bahari Sumedang',
+  school_year: '2026/2027',
+  principal_name: '',
+  principal_nip: '',
+  report_title: 'LAPORAN PRAKTIK KERJA LAPANGAN',
+  approval_location: 'Sumedang',
+  standard_background: 'Praktik Kerja Lapangan merupakan bagian dari proses pembelajaran siswa SMK untuk memperoleh pengalaman kerja nyata, menerapkan kompetensi yang dipelajari di sekolah, serta memahami budaya kerja di dunia kerja.',
+  standard_objectives: '1. Meningkatkan pengalaman kerja siswa.\n2. Menerapkan kompetensi yang diperoleh di sekolah.\n3. Mengenal budaya dan tata kerja di dunia kerja.\n4. Mengembangkan kedisiplinan dan tanggung jawab.\n5. Meningkatkan keterampilan sesuai bidang keahlian.',
+  standard_benefits: 'Bagi siswa: menambah pengalaman, pengetahuan, keterampilan, disiplin, dan tanggung jawab kerja.\nBagi sekolah: menjadi bahan evaluasi kesesuaian kompetensi siswa dengan kebutuhan dunia kerja.\nBagi instansi: mendukung kegiatan pendidikan dan memberikan pengalaman kerja kepada peserta didik.',
+};
+
+function isFinalReportSchemaError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = readableMessage(error, '').toLowerCase();
+  return ['42P01', '42883', 'PGRST202', 'PGRST205'].includes(code)
+    || message.includes('pkl_reports')
+    || message.includes('pkl_report_settings')
+    || message.includes('save_pkl_report')
+    || message.includes('submit_pkl_report')
+    || message.includes('review_pkl_report');
+}
+
+function finalReportStatusMeta(status) {
+  const map = {
+    draft: ['Draf', 'gray', 'Laporan masih dapat diedit oleh siswa.'],
+    submitted: ['Diajukan', 'yellow', 'Menunggu pemeriksaan Guru Pembimbing.'],
+    revision: ['Perlu Revisi', 'red', 'Siswa perlu memperbaiki laporan sesuai catatan guru.'],
+    approved: ['Disetujui', 'green', 'Laporan sudah disetujui Guru Pembimbing.'],
+  };
+  return map[status] || ['Belum Dibuat', 'gray', 'Siswa belum menyimpan draf laporan.'];
+}
+
+function finalReportStatusBadge(status) {
+  const [label, color] = finalReportStatusMeta(status);
+  return `<span class="badge ${color}">${esc(label)}</span>`;
+}
+
+function textBlock(value, fallback = '-') {
+  const text = String(value || '').trim();
+  return esc(text || fallback).replace(/\n/g, '<br>');
+}
+
+function uniqueTextValues(rows, field) {
+  return [...new Set(rows.map((item) => String(item?.[field] || '').trim()).filter(Boolean))];
+}
+
+async function loadFinalReportSettings() {
+  const { data, error } = await sb.from('pkl_report_settings').select('*').eq('id', 1).maybeSingle();
+  if (error) {
+    if (isFinalReportSchemaError(error)) {
+      state.finalReportFeatureReady = false;
+      state.finalReportSettings = { ...DEFAULT_PKL_REPORT_SETTINGS };
+      return state.finalReportSettings;
+    }
+    throw error;
+  }
+  state.finalReportFeatureReady = true;
+  state.finalReportSettings = { ...DEFAULT_PKL_REPORT_SETTINGS, ...(data || {}) };
+  return state.finalReportSettings;
+}
+
+function finalReportMigrationNotice() {
+  return `<div class="card final-report-migration"><span class="section-kicker">AKTIVASI FITUR v6.26</span><h3>Database Laporan PKL belum di-upgrade</h3><p>Frontend v6.26 sudah terpasang, tetapi tabel dan fungsi laporan akhir belum tersedia di Supabase.</p><div class="info-strip"><strong>Jalankan sekali:</strong> buka Supabase → SQL Editor → salin dan jalankan file <code>database/upgrade-final-pkl-report.sql</code>.</div><p class="muted">Setelah SQL berhasil dijalankan, refresh aplikasi dengan Ctrl + F5.</p></div>`;
+}
+
+async function renderFinalReport() {
+  await loadFinalReportSettings();
+  if (!state.finalReportFeatureReady) {
+    $('#content').innerHTML = finalReportMigrationNotice();
+    return;
+  }
+  if (state.profile.role === 'student') return renderStudentFinalReport();
+  return renderFinalReportManager();
+}
+
+async function loadFinalReportContext(studentId) {
+  const [detailResult, reportResult, journalResult] = await Promise.all([
+    sb.from('student_details')
+      .select('*,profiles!student_details_id_fkey(full_name,email),teacher:profiles!student_details_teacher_id_fkey(full_name),field_supervisor:profiles!student_details_field_supervisor_id_fkey(full_name)')
+      .eq('id', studentId).maybeSingle(),
+    sb.from('pkl_reports').select('*').eq('student_id', studentId).maybeSingle(),
+    sb.from('daily_journals').select('*').eq('student_id', studentId).order('journal_date', { ascending: true }),
+  ]);
+  for (const result of [detailResult, reportResult, journalResult]) {
+    if (result.error) {
+      if (isFinalReportSchemaError(result.error)) {
+        state.finalReportFeatureReady = false;
+        throw new Error('Database Laporan PKL belum di-upgrade. Jalankan database/upgrade-final-pkl-report.sql.');
+      }
+      throw result.error;
+    }
+  }
+  return {
+    detail: detailResult.data || null,
+    report: reportResult.data || null,
+    journals: journalResult.data || [],
+    settings: state.finalReportSettings || await loadFinalReportSettings(),
+  };
+}
+
+function finalReportFormHtml(report, detail, settings, editable) {
+  const disabled = editable ? '' : 'disabled';
+  return `<form id="finalReportForm" class="form-grid final-report-form">
+    <label class="wide">Judul Laporan<input name="report_title" maxlength="180" value="${esc(report?.report_title || settings.report_title || '')}" ${disabled}></label>
+    <label>Tempat PKL<input value="${esc(detail?.internship_place || '')}" disabled></label>
+    <label>Unit/Bagian Penempatan<input name="placement_unit" maxlength="200" value="${esc(report?.placement_unit || '')}" placeholder="Contoh: Bagian Administrasi / RPH ..." ${disabled}></label>
+    <label class="wide">Profil Singkat Instansi <span class="required-mark">Wajib sebelum diajukan</span><textarea name="institution_profile" minlength="30" required placeholder="Jelaskan secara ringkas Perhutani/unit tempat PKL, tugas utama, dan bidang kerjanya." ${disabled}>${esc(report?.institution_profile || '')}</textarea></label>
+    <label class="wide">Struktur Organisasi / Posisi Penempatan <span class="optional-label">opsional</span><textarea name="organization_structure" placeholder="Tuliskan susunan singkat atau posisi bagian tempat Anda ditempatkan." ${disabled}>${esc(report?.organization_structure || '')}</textarea></label>
+    <label class="wide">Kata Pengantar <span class="required-mark">Wajib sebelum diajukan</span><textarea name="preface" minlength="50" required placeholder="Tuliskan kata pengantar laporan PKL." ${disabled}>${esc(report?.preface || '')}</textarea></label>
+    <label class="wide">Kesimpulan <span class="required-mark">Wajib sebelum diajukan</span><textarea name="conclusion" minlength="50" required placeholder="Rangkum pengalaman, keterampilan, dan perkembangan selama PKL." ${disabled}>${esc(report?.conclusion || '')}</textarea></label>
+    <label class="wide">Saran untuk Sekolah<textarea name="suggestions_school" placeholder="Saran yang berkaitan dengan persiapan, pembimbingan, atau monitoring PKL." ${disabled}>${esc(report?.suggestions_school || '')}</textarea></label>
+    <label class="wide">Saran untuk Tempat PKL<textarea name="suggestions_workplace" placeholder="Sampaikan saran secara sopan dan konkret." ${disabled}>${esc(report?.suggestions_workplace || '')}</textarea></label>
+    <label class="wide">Saran untuk Siswa PKL Berikutnya<textarea name="suggestions_students" placeholder="Tuliskan hal yang sebaiknya dipersiapkan siswa berikutnya." ${disabled}>${esc(report?.suggestions_students || '')}</textarea></label>
+  </form>`;
+}
+
+async function renderStudentFinalReport() {
+  const context = await loadFinalReportContext(state.profile.id);
+  const { detail, report, journals, settings } = context;
+  state.finalReport = report;
+  const approved = journals.filter((item) => item.status === 'approved');
+  const editable = !report || ['draft', 'revision'].includes(report.status);
+  const [statusLabel, statusColor, statusDescription] = finalReportStatusMeta(report?.status);
+  const teacherName = detail?.teacher?.full_name || 'Belum ditetapkan';
+
+  $('#content').innerHTML = `<div class="page-intro final-report-intro"><div><span class="section-kicker">LAPORAN AKHIR PKL</span><h3>Susun Laporan PKL</h3><p>Isi bagian yang bersifat naratif satu kali. Data kegiatan, keterampilan, refleksi, catatan pembimbing, dan foto akan diambil otomatis dari jurnal yang sudah disetujui.</p></div><div class="report-action-buttons"><button class="btn secondary" id="previewFinalReport">Pratinjau</button><button class="btn primary" id="printFinalReport">Cetak / Simpan PDF</button></div></div>
+    <div class="cards final-report-summary-cards"><div class="card stat"><strong>${approved.length}</strong><span>Jurnal disetujui</span></div><div class="card stat"><strong>${journals.length}</strong><span>Total jurnal</span></div><div class="card stat"><strong>${approved.reduce((sum,item)=>sum+(Number(item.work_hours)||0),0)}</strong><span>Jam dari jurnal disetujui</span></div></div>
+    <section class="data-panel final-report-status-panel"><div><span class="badge ${statusColor}">${esc(statusLabel)}</span><h4>Status Laporan PKL</h4><p>${esc(statusDescription)}</p>${report?.teacher_note ? `<div class="teacher-review-note"><strong>Catatan Guru Pembimbing</strong><p>${textBlock(report.teacher_note)}</p></div>` : ''}</div><div class="final-report-identity"><span><small>Guru Pembimbing</small><strong>${esc(teacherName)}</strong></span><span><small>Tempat PKL</small><strong>${esc(detail?.internship_place || '-')}</strong></span><span><small>Periode</small><strong>${esc(detail?.start_date ? formatAttendanceDate(detail.start_date) : '-')} s.d. ${esc(detail?.end_date ? formatAttendanceDate(detail.end_date) : '-')}</strong></span></div></section>
+    <div class="info-strip final-report-auto-info"><strong>Bagian otomatis dari E-Jurnal:</strong> BAB III, dokumentasi, rekap jurnal, pengetahuan/keterampilan, kendala dan solusi, refleksi, serta catatan pembimbing menggunakan jurnal berstatus <b>Disetujui</b>.</div>
+    <section class="data-panel"><div class="panel-title"><div><h4>Data Naratif Laporan</h4><p>${editable ? 'Isi dan simpan draf. Anda masih dapat memperbaikinya sampai laporan diajukan.' : 'Data dikunci selama laporan menunggu pemeriksaan atau setelah disetujui.'}</p></div>${finalReportStatusBadge(report?.status)}</div>${finalReportFormHtml(report, detail, settings, editable)}
+      <div class="final-report-form-actions">${editable ? '<button class="btn secondary" id="saveFinalReport">Simpan Draf</button><button class="btn primary btn-emphasis" id="submitFinalReport">Ajukan ke Guru Pembimbing</button>' : ''}</div>
+    </section>
+    <section class="data-panel"><div class="panel-title"><div><h4>Struktur Laporan yang Dibentuk Otomatis</h4><p>Sistem menyusun laporan akhir tanpa menghapus fitur Cetak Jurnal Harian.</p></div></div><div class="report-outline-grid"><span><b>Bagian Awal</b><small>Cover, pengesahan, kata pengantar, daftar isi</small></span><span><b>BAB I</b><small>Pendahuluan dari teks standar sekolah</small></span><span><b>BAB II</b><small>Profil tempat PKL dan unit penempatan</small></span><span><b>BAB III</b><small>Pelaksanaan PKL dari jurnal disetujui</small></span><span><b>BAB IV</b><small>Dokumentasi foto kegiatan</small></span><span><b>BAB V</b><small>Kesimpulan dan saran</small></span><span><b>Lampiran</b><small>Rekap jurnal dan catatan pembimbing</small></span></div></section>`;
+
+  $('#saveFinalReport')?.addEventListener('click', () => saveStudentFinalReport());
+  $('#submitFinalReport')?.addEventListener('click', () => submitStudentFinalReport());
+  $('#previewFinalReport').onclick = async () => {
+    if (editable) {
+      const saved = await saveStudentFinalReport({ silent: true });
+      if (!saved) return;
+    }
+    await printFinalPklReport(state.profile.id, { autoPrint: false });
+  };
+  $('#printFinalReport').onclick = async () => {
+    if (editable) {
+      const saved = await saveStudentFinalReport({ silent: true });
+      if (!saved) return;
+    }
+    await printFinalPklReport(state.profile.id, { autoPrint: true });
+  };
+}
+
+function collectFinalReportForm() {
+  const form = $('#finalReportForm');
+  if (!form) return null;
+  const data = Object.fromEntries(new FormData(form));
+  return {
+    p_report_title: String(data.report_title || '').trim(),
+    p_placement_unit: String(data.placement_unit || '').trim(),
+    p_institution_profile: String(data.institution_profile || '').trim(),
+    p_organization_structure: String(data.organization_structure || '').trim(),
+    p_preface: String(data.preface || '').trim(),
+    p_conclusion: String(data.conclusion || '').trim(),
+    p_suggestions_school: String(data.suggestions_school || '').trim(),
+    p_suggestions_workplace: String(data.suggestions_workplace || '').trim(),
+    p_suggestions_students: String(data.suggestions_students || '').trim(),
+  };
+}
+
+async function saveStudentFinalReport({ silent = false } = {}) {
+  const payload = collectFinalReportForm();
+  if (!payload) return false;
+  const { data, error } = await sb.rpc('save_pkl_report', payload);
+  if (error) {
+    if (isFinalReportSchemaError(error)) return toast('Fitur laporan belum aktif. Jalankan upgrade database v6.26.'), false;
+    toast(error.message || 'Laporan gagal disimpan.', 5000);
+    return false;
+  }
+  state.finalReport = data || state.finalReport;
+  if (!silent) {
+    toast('Draf laporan PKL berhasil disimpan.');
+    await renderStudentFinalReport();
+  }
+  return true;
+}
+
+async function submitStudentFinalReport() {
+  if (!$('#finalReportForm')?.reportValidity()) return;
+  const saved = await saveStudentFinalReport({ silent: true });
+  if (!saved) return;
+  if (!confirm('Ajukan laporan kepada Guru Pembimbing? Setelah diajukan, isi laporan dikunci sampai guru memberikan keputusan.')) return;
+  const { error } = await sb.rpc('submit_pkl_report');
+  if (error) return toast(error.message || 'Laporan gagal diajukan.', 5500);
+  toast('Laporan berhasil diajukan kepada Guru Pembimbing.');
+  await renderStudentFinalReport();
+}
+
+function reportSettingsFormHtml(settings) {
+  return `<details class="data-panel report-settings-panel" open><summary><strong>Pengaturan Format Laporan Sekolah</strong><span>Administrator</span></summary><form id="reportSettingsForm" class="form-grid">
+    <label>Nama Sekolah<input name="school_name" value="${esc(settings.school_name || '')}" required></label>
+    <label>Tahun Pelajaran<input name="school_year" value="${esc(settings.school_year || '')}" placeholder="2026/2027"></label>
+    <label>Nama Kepala Sekolah<input name="principal_name" value="${esc(settings.principal_name || '')}"></label>
+    <label>NIP Kepala Sekolah<input name="principal_nip" value="${esc(settings.principal_nip || '')}"></label>
+    <label>Lokasi Pengesahan<input name="approval_location" value="${esc(settings.approval_location || '')}" placeholder="Sumedang"></label>
+    <label>Judul Standar Laporan<input name="report_title" value="${esc(settings.report_title || '')}" required></label>
+    <label class="wide">Latar Belakang Standar<textarea name="standard_background">${esc(settings.standard_background || '')}</textarea></label>
+    <label class="wide">Tujuan PKL Standar<textarea name="standard_objectives">${esc(settings.standard_objectives || '')}</textarea></label>
+    <label class="wide">Manfaat PKL Standar<textarea name="standard_benefits">${esc(settings.standard_benefits || '')}</textarea></label>
+    <div class="wide actions"><button class="btn primary" type="submit">Simpan Pengaturan Laporan</button></div>
+  </form></details>`;
+}
+
+async function renderFinalReportManager() {
+  const role = state.profile.role;
+  let studentQuery = sb.from('student_details')
+    .select('*,profiles!student_details_id_fkey(full_name,email),teacher:profiles!student_details_teacher_id_fkey(full_name),field_supervisor:profiles!student_details_field_supervisor_id_fkey(full_name)')
+    .order('nis');
+  if (role === 'teacher') studentQuery = studentQuery.eq('teacher_id', state.profile.id);
+  if (role === 'field_supervisor') studentQuery = studentQuery.eq('field_supervisor_id', state.profile.id);
+  const studentResult = await studentQuery;
+  if (studentResult.error) throw studentResult.error;
+  const students = studentResult.data || [];
+  const ids = students.map((item) => item.id);
+  let reports = [];
+  if (ids.length) {
+    const reportResult = await sb.from('pkl_reports').select('*').in('student_id', ids);
+    if (reportResult.error) {
+      if (isFinalReportSchemaError(reportResult.error)) {
+        state.finalReportFeatureReady = false;
+        $('#content').innerHTML = finalReportMigrationNotice();
+        return;
+      }
+      throw reportResult.error;
+    }
+    reports = reportResult.data || [];
+  }
+  const reportByStudent = new Map(reports.map((item) => [item.student_id, item]));
+  state.finalReportStudents = students.map((student) => ({ ...student, report: reportByStudent.get(student.id) || null }));
+  const counts = state.finalReportStudents.reduce((acc, item) => {
+    const key = item.report?.status || 'none';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, { none:0, draft:0, submitted:0, revision:0, approved:0 });
+  const heading = role === 'teacher' ? 'Laporan PKL Siswa Bimbingan' : role === 'admin' ? 'Monitoring Laporan PKL' : 'Laporan PKL Siswa';
+  const description = role === 'teacher'
+    ? 'Periksa laporan yang diajukan siswa, berikan catatan revisi, lalu setujui laporan yang sudah sesuai.'
+    : role === 'admin'
+      ? 'Pantau status laporan seluruh siswa dan atur identitas serta teks baku yang digunakan pada hasil cetak.'
+      : 'Lihat laporan akhir siswa yang menjadi bimbingan lapangan Anda.';
+
+  $('#content').innerHTML = `<div class="page-intro final-report-intro"><div><span class="section-kicker">LAPORAN AKHIR PKL</span><h3>${heading}</h3><p>${description}</p></div></div>
+    ${role === 'admin' ? reportSettingsFormHtml(state.finalReportSettings || DEFAULT_PKL_REPORT_SETTINGS) : ''}
+    <div class="cards final-report-summary-cards"><div class="card stat"><strong>${counts.submitted}</strong><span>Menunggu review</span></div><div class="card stat"><strong>${counts.revision}</strong><span>Perlu revisi</span></div><div class="card stat"><strong>${counts.approved}</strong><span>Disetujui</span></div><div class="card stat"><strong>${counts.none + counts.draft}</strong><span>Belum diajukan</span></div></div>
+    <section class="data-panel"><div class="attendance-filter-heading"><div><strong>Daftar Laporan Siswa</strong><span>Gunakan pencarian dan status untuk menemukan laporan dengan cepat.</span></div><button class="btn secondary" id="resetFinalReportFilters">Reset Filter</button></div><div class="attendance-filter-grid"><label>Cari siswa<input id="finalReportSearch" placeholder="Nama, NISN, kelas, tempat PKL"></label><label>Status<select id="finalReportStatusFilter"><option value="">Semua status</option><option value="none">Belum dibuat</option><option value="draft">Draf</option><option value="submitted">Diajukan</option><option value="revision">Perlu revisi</option><option value="approved">Disetujui</option></select></label></div></section>
+    <section class="data-panel"><div class="table-wrap"><table><thead><tr><th>Siswa</th><th>NISN/Kelas</th><th>Tempat PKL</th><th>Guru Pembimbing</th><th>Status</th><th>Diperbarui</th><th>Tindakan</th></tr></thead><tbody id="finalReportStudentRows"></tbody></table></div><p id="finalReportListMeta" class="form-help"></p></section>`;
+
+  const draw = () => {
+    const query = ($('#finalReportSearch')?.value || '').trim().toLowerCase();
+    const status = $('#finalReportStatusFilter')?.value || '';
+    const visible = state.finalReportStudents.filter((item) => {
+      const reportStatus = item.report?.status || 'none';
+      const searchText = `${item.profiles?.full_name || ''} ${item.nis || ''} ${item.class_name || ''} ${item.internship_place || ''}`.toLowerCase();
+      return (!query || searchText.includes(query)) && (!status || reportStatus === status);
+    });
+    $('#finalReportStudentRows').innerHTML = visible.map((item) => {
+      const report = item.report;
+      const canReview = role === 'teacher' && report?.status === 'submitted';
+      return `<tr><td><strong>${esc(item.profiles?.full_name || '-')}</strong><small>${esc(item.profiles?.email || '')}</small></td><td><strong>${esc(item.nis || '-')}</strong><small>${esc(item.class_name || '-')}</small></td><td>${esc(item.internship_place || '-')}</td><td>${esc(item.teacher?.full_name || '-')}</td><td>${finalReportStatusBadge(report?.status)}</td><td>${esc(report?.updated_at ? formatDateTime(report.updated_at) : '-')}</td><td><div class="actions">${report ? `<button class="btn secondary open-final-report" data-id="${item.id}">Lihat</button><button class="btn secondary preview-final-report" data-id="${item.id}">Pratinjau</button>${canReview ? `<button class="btn primary review-final-report" data-id="${item.id}">Tinjau</button>` : ''}` : '<span class="muted">Belum tersedia</span>'}</div></td></tr>`;
+    }).join('') || '<tr><td colspan="7" class="empty">Tidak ada laporan yang sesuai dengan filter.</td></tr>';
+    $('#finalReportListMeta').textContent = `Menampilkan ${visible.length} dari ${state.finalReportStudents.length} siswa.`;
+    document.querySelectorAll('.open-final-report').forEach((button) => button.onclick = () => openFinalReportDetail(button.dataset.id));
+    document.querySelectorAll('.preview-final-report').forEach((button) => button.onclick = () => printFinalPklReport(button.dataset.id, { autoPrint: false }));
+    document.querySelectorAll('.review-final-report').forEach((button) => button.onclick = () => openFinalReportDetail(button.dataset.id, { reviewMode: true }));
+  };
+
+  $('#finalReportSearch').addEventListener('input', draw);
+  $('#finalReportStatusFilter').addEventListener('change', draw);
+  $('#resetFinalReportFilters').onclick = () => { $('#finalReportSearch').value=''; $('#finalReportStatusFilter').value=''; draw(); };
+  $('#reportSettingsForm')?.addEventListener('submit', saveFinalReportSettings);
+  draw();
+}
+
+async function saveFinalReportSettings(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fields = Object.fromEntries(new FormData(form));
+  const payload = {
+    id: 1,
+    school_name: String(fields.school_name || '').trim(),
+    school_year: String(fields.school_year || '').trim() || null,
+    principal_name: String(fields.principal_name || '').trim() || null,
+    principal_nip: String(fields.principal_nip || '').trim() || null,
+    report_title: String(fields.report_title || '').trim(),
+    approval_location: String(fields.approval_location || '').trim() || null,
+    standard_background: String(fields.standard_background || '').trim() || null,
+    standard_objectives: String(fields.standard_objectives || '').trim() || null,
+    standard_benefits: String(fields.standard_benefits || '').trim() || null,
+    updated_at: new Date().toISOString(),
+    updated_by: state.profile.id,
+  };
+  const { error } = await sb.from('pkl_report_settings').upsert(payload, { onConflict: 'id' });
+  if (error) return toast(error.message || 'Pengaturan laporan gagal disimpan.', 5000);
+  state.finalReportSettings = { ...DEFAULT_PKL_REPORT_SETTINGS, ...payload };
+  toast('Pengaturan format laporan berhasil disimpan.');
+}
+
+async function openFinalReportDetail(studentId, { reviewMode = false } = {}) {
+  const context = await loadFinalReportContext(studentId);
+  const { detail, report, journals } = context;
+  if (!report) return toast('Siswa belum membuat laporan PKL.');
+  const approved = journals.filter((item) => item.status === 'approved');
+  const isReviewable = state.profile.role === 'teacher' && report.status === 'submitted';
+  modal('Detail Laporan PKL', `<div class="final-report-modal-summary"><div><span>Siswa</span><strong>${esc(detail?.profiles?.full_name || '-')}</strong></div><div><span>NISN / Kelas</span><strong>${esc(detail?.nis || '-')} / ${esc(detail?.class_name || '-')}</strong></div><div><span>Tempat PKL</span><strong>${esc(detail?.internship_place || '-')}</strong></div><div><span>Status</span>${finalReportStatusBadge(report.status)}</div><div><span>Jurnal Disetujui</span><strong>${approved.length}</strong></div></div>
+    <div class="final-report-readonly"><section><h4>Profil Instansi</h4><p>${textBlock(report.institution_profile)}</p></section><section><h4>Unit Penempatan</h4><p>${textBlock(report.placement_unit)}</p></section><section><h4>Kata Pengantar</h4><p>${textBlock(report.preface)}</p></section><section><h4>Kesimpulan</h4><p>${textBlock(report.conclusion)}</p></section><section><h4>Saran</h4><p><b>Sekolah:</b><br>${textBlock(report.suggestions_school)}<br><br><b>Tempat PKL:</b><br>${textBlock(report.suggestions_workplace)}<br><br><b>Siswa berikutnya:</b><br>${textBlock(report.suggestions_students)}</p></section>${report.teacher_note ? `<section class="teacher-review-note"><h4>Catatan Guru</h4><p>${textBlock(report.teacher_note)}</p></section>` : ''}</div>
+    <div class="actions"><button class="btn secondary" id="modalPreviewFinalReport">Pratinjau Laporan</button><button class="btn primary" id="modalPrintFinalReport">Cetak / PDF</button></div>
+    ${isReviewable && reviewMode ? `<form id="finalReportReviewForm" class="form-stack teacher-review-form"><label>Catatan Guru Pembimbing<textarea name="teacher_note" placeholder="Wajib diisi jika meminta revisi."></textarea></label><div class="actions"><button type="button" class="btn warn final-report-review-action" data-status="revision">Minta Revisi</button><button type="button" class="btn primary final-report-review-action" data-status="approved">Setujui Laporan</button></div></form>` : ''}`);
+  $('#modalPreviewFinalReport').onclick = () => printFinalPklReport(studentId, { autoPrint: false });
+  $('#modalPrintFinalReport').onclick = () => printFinalPklReport(studentId, { autoPrint: true });
+  document.querySelectorAll('.final-report-review-action').forEach((button) => {
+    button.onclick = async () => {
+      const note = String(new FormData($('#finalReportReviewForm')).get('teacher_note') || '').trim();
+      const status = button.dataset.status;
+      const label = status === 'approved' ? 'menyetujui' : 'meminta revisi pada';
+      if (!confirm(`Anda akan ${label} laporan siswa ini. Lanjutkan?`)) return;
+      button.disabled = true;
+      const { error } = await sb.rpc('review_pkl_report', { p_student_id: studentId, p_status: status, p_teacher_note: note || null });
+      if (error) { button.disabled = false; return toast(error.message || 'Review laporan gagal.', 5000); }
+      closeModal();
+      toast(status === 'approved' ? 'Laporan siswa berhasil disetujui.' : 'Laporan dikembalikan kepada siswa untuk direvisi.');
+      await renderFinalReportManager();
+    };
+  });
+}
+
+function compactJournalSummaryTable(journals) {
+  if (!journals.length) return '<p>Belum ada jurnal yang disetujui.</p>';
+  return `<table class="report-table"><thead><tr><th>No</th><th>Tanggal</th><th>Kegiatan</th><th>Tahapan</th><th>Pengetahuan/Keterampilan</th></tr></thead><tbody>${journals.map((item,index)=>`<tr><td>${index+1}</td><td>${esc(formatAttendanceDate(item.journal_date))}</td><td>${esc(item.activity_title || '-')}</td><td>${esc((item.activity_stages || []).join(', ') || '-')}</td><td>${esc(item.learning || '-')}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function finalReportDocumentationHtml(journals, signedUrls) {
+  const items = [];
+  journals.forEach((journal) => {
+    (journal.photo_paths || []).filter(Boolean).forEach((path, photoIndex) => {
+      const url = signedUrls[path] || '';
+      items.push(`<figure class="final-doc-photo">${url ? `<img src="${esc(url)}" alt="Dokumentasi kegiatan">` : '<div class="photo-missing">Foto tidak dapat dimuat</div>'}<figcaption><b>${esc(formatAttendanceDate(journal.journal_date))}</b><br>${esc(journal.activity_title || 'Kegiatan PKL')} · Foto ${photoIndex + 1}</figcaption></figure>`);
+    });
+  });
+  return items.length ? `<div class="final-doc-grid">${items.join('')}</div>` : '<p>Belum ada foto dokumentasi pada jurnal yang disetujui.</p>';
+}
+
+async function printFinalPklReport(studentId, { autoPrint = false } = {}) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return toast('Popup diblokir browser. Izinkan popup lalu coba kembali.');
+  printWindow.document.write('<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Menyiapkan Laporan PKL</title><style>body{font-family:Arial;padding:32px;color:#1d2939}strong{color:#174c35}</style></head><body><strong>Menyiapkan laporan PKL dan foto dokumentasi...</strong><p>Mohon tunggu. Jangan tutup halaman ini.</p></body></html>');
+  printWindow.document.close();
+  try {
+    const context = await loadFinalReportContext(studentId);
+    const { detail, report, journals, settings } = context;
+    if (!report) { printWindow.close(); return toast('Laporan PKL belum dibuat.'); }
+    const approved = journals.filter((item) => item.status === 'approved');
+    const photoPaths = [...new Set(approved.flatMap((item) => (item.photo_paths || []).filter(Boolean)))];
+    const signedUrls = {};
+    const batchSize = 50;
+    for (let index = 0; index < photoPaths.length; index += batchSize) {
+      Object.assign(signedUrls, await signedPhotoUrls(photoPaths.slice(index, index + batchSize)));
+    }
+    if (printWindow.closed) return;
+
+    const studentName = detail?.profiles?.full_name || 'Siswa';
+    const nis = detail?.nis || '-';
+    const className = detail?.class_name || '-';
+    const internshipPlace = detail?.internship_place || '-';
+    const teacherName = detail?.teacher?.full_name || '________________________';
+    const fieldSupervisorName = detail?.field_supervisor?.full_name || '________________________';
+    const principalName = settings.principal_name || '________________________';
+    const title = report.report_title || settings.report_title || 'LAPORAN PRAKTIK KERJA LAPANGAN';
+    const activities = uniqueTextValues(approved, 'activity_title');
+    const learnings = uniqueTextValues(approved, 'learning');
+    const obstacles = uniqueTextValues(approved, 'obstacles');
+    const reflections = uniqueTextValues(approved, 'reflection');
+    const supervisorNotes = uniqueTextValues(approved, 'supervisor_note');
+    const period = `${detail?.start_date ? formatAttendanceDate(detail.start_date) : '-'} s.d. ${detail?.end_date ? formatAttendanceDate(detail.end_date) : '-'}`;
+    const totalHours = approved.reduce((sum,item)=>sum+(Number(item.work_hours)||0),0);
+    const suggestions = `<h3>5.2 Saran</h3><h4>A. Untuk Sekolah</h4><p>${textBlock(report.suggestions_school)}</p><h4>B. Untuk Tempat PKL</h4><p>${textBlock(report.suggestions_workplace)}</p><h4>C. Untuk Siswa</h4><p>${textBlock(report.suggestions_students)}</p>`;
+    const reviewWatermark = report.status === 'approved' ? '' : `<div class="watermark">${esc(finalReportStatusMeta(report.status)[0].toUpperCase())}</div>`;
+    const logoUrl = `${location.origin}/assets/logo-sekolah.png`;
+
+    const html = `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${esc(title)} - ${esc(studentName)}</title><style>
+      @page{size:A4;margin:20mm 18mm 18mm}*{box-sizing:border-box}body{font-family:"Times New Roman",serif;color:#111;margin:0;font-size:12pt;line-height:1.55}.page{min-height:245mm;page-break-after:always;position:relative}.page:last-child{page-break-after:auto}.cover{display:flex;min-height:245mm;flex-direction:column;align-items:center;text-align:center;justify-content:flex-start;padding-top:22mm}.cover img{width:105px;height:105px;object-fit:contain;margin:18mm 0 12mm}.cover h1{font-size:18pt;line-height:1.4;margin:0 0 8mm}.cover h2{font-size:14pt;margin:0 0 12mm}.cover .identity-lines{width:75%;text-align:left;margin:0 auto}.cover .identity-lines div{display:grid;grid-template-columns:110px 15px 1fr;margin:5px 0}.cover .school{margin-top:auto;font-weight:bold;font-size:13pt}.cover .year{margin-top:4px}.chapter-title{text-align:center;font-size:15pt;margin:0 0 12mm}.subchapter{font-size:12pt;margin:7mm 0 3mm}.page p{text-align:justify;margin:0 0 4mm;white-space:normal}.pre{white-space:pre-line}.approval-table{width:100%;border-collapse:collapse;margin:8mm 0}.approval-table td,.approval-table th{padding:5px 7px;border:1px solid #333;text-align:left}.signature-grid{display:grid;grid-template-columns:1fr 1fr;gap:18mm 15mm;margin-top:16mm;text-align:center}.signature-grid .space{height:22mm}.toc{width:100%;border-collapse:collapse}.toc td{padding:5px 0;border-bottom:1px dotted #999}.toc td:last-child{text-align:right;width:30px}.report-table{width:100%;border-collapse:collapse;font-size:9.5pt;margin:4mm 0}.report-table th,.report-table td{border:1px solid #444;padding:4px;vertical-align:top}.report-table th{background:#eee;text-align:center}.bullet-list{margin:3mm 0 5mm;padding-left:7mm}.bullet-list li{margin-bottom:2mm;text-align:justify}.final-doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8mm 7mm}.final-doc-photo{margin:0;break-inside:avoid;page-break-inside:avoid;border:1px solid #777;padding:3mm}.final-doc-photo img,.photo-missing{width:100%;height:72mm;object-fit:contain;background:#f2f2f2}.photo-missing{display:flex;align-items:center;justify-content:center;color:#666}.final-doc-photo figcaption{text-align:center;font-size:9pt;margin-top:2mm}.journal-appendix{break-inside:avoid;margin-bottom:8mm;border-bottom:1px solid #aaa;padding-bottom:5mm}.journal-appendix h4{margin:0 0 2mm}.journal-appendix p{font-size:10pt;margin:1mm 0}.watermark{position:fixed;top:48%;left:12%;font-family:Arial,sans-serif;font-size:68pt;font-weight:bold;color:rgba(160,0,0,.08);transform:rotate(-28deg);z-index:0;pointer-events:none}.print-actions{position:fixed;right:16px;top:16px;z-index:20;font-family:Arial;border:0;background:#174c35;color:#fff;padding:10px 14px;border-radius:7px;cursor:pointer}.meta-box{border:1px solid #555;padding:5mm;margin:5mm 0}.meta-box p{text-align:left;margin:1mm 0}.report-note{font-size:9pt;color:#555;font-style:italic}.center{text-align:center!important}.right{text-align:right!important}@media print{.print-actions{display:none}.watermark{-webkit-print-color-adjust:exact;print-color-adjust:exact}.report-table th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    </style></head><body>${reviewWatermark}<button class="print-actions" onclick="window.print()">Cetak / Simpan PDF</button>
+      <section class="page cover"><h1>${esc(title)}</h1><h2>${esc(internshipPlace)}</h2><img src="${esc(logoUrl)}" alt="Logo sekolah"><div class="identity-lines"><div><b>Nama</b><span>:</span><span>${esc(studentName)}</span></div><div><b>NISN</b><span>:</span><span>${esc(nis)}</span></div><div><b>Kelas</b><span>:</span><span>${esc(className)}</span></div><div><b>Program</b><span>:</span><span>Praktik Kerja Lapangan</span></div></div><div class="school">${esc(settings.school_name || DEFAULT_PKL_REPORT_SETTINGS.school_name)}</div><div class="year">Tahun Pelajaran ${esc(settings.school_year || '-')}</div></section>
+      <section class="page"><h2 class="chapter-title">LEMBAR PENGESAHAN</h2><p>Laporan Praktik Kerja Lapangan ini telah diperiksa dan disetujui sebagai dokumentasi pelaksanaan PKL siswa.</p><table class="approval-table"><tr><th>Nama Siswa</th><td>${esc(studentName)}</td></tr><tr><th>NISN / Kelas</th><td>${esc(nis)} / ${esc(className)}</td></tr><tr><th>Tempat PKL</th><td>${esc(internshipPlace)}</td></tr><tr><th>Unit Penempatan</th><td>${esc(report.placement_unit || '-')}</td></tr><tr><th>Periode PKL</th><td>${esc(period)}</td></tr><tr><th>Status Laporan</th><td>${esc(finalReportStatusMeta(report.status)[0])}</td></tr></table><p class="right">${esc(settings.approval_location || 'Sumedang')}, ${esc(new Intl.DateTimeFormat('id-ID',{dateStyle:'long'}).format(new Date()))}</p><div class="signature-grid"><div>Pembimbing Lapangan<div class="space"></div><b>${esc(fieldSupervisorName)}</b></div><div>Guru Pembimbing<div class="space"></div><b>${esc(teacherName)}</b></div><div>Siswa<div class="space"></div><b>${esc(studentName)}</b></div><div>Kepala Sekolah<div class="space"></div><b>${esc(principalName)}</b>${settings.principal_nip ? `<br>NIP. ${esc(settings.principal_nip)}` : ''}</div></div></section>
+      <section class="page"><h2 class="chapter-title">KATA PENGANTAR</h2><p class="pre">${textBlock(report.preface)}</p></section>
+      <section class="page"><h2 class="chapter-title">DAFTAR ISI</h2><table class="toc"><tr><td>LEMBAR PENGESAHAN</td><td></td></tr><tr><td>KATA PENGANTAR</td><td></td></tr><tr><td>BAB I PENDAHULUAN</td><td></td></tr><tr><td>BAB II PROFIL TEMPAT PRAKTIK KERJA LAPANGAN</td><td></td></tr><tr><td>BAB III PELAKSANAAN PRAKTIK KERJA LAPANGAN</td><td></td></tr><tr><td>BAB IV DOKUMENTASI KEGIATAN</td><td></td></tr><tr><td>BAB V PENUTUP</td><td></td></tr><tr><td>LAMPIRAN</td><td></td></tr></table><p class="report-note">Nomor halaman dapat disesuaikan setelah dokumen disimpan sebagai PDF atau dicetak.</p></section>
+      <section class="page"><h2 class="chapter-title">BAB I<br>PENDAHULUAN</h2><h3 class="subchapter">1.1 Latar Belakang</h3><p class="pre">${textBlock(settings.standard_background)}</p><h3 class="subchapter">1.2 Tujuan PKL</h3><p class="pre">${textBlock(settings.standard_objectives)}</p><h3 class="subchapter">1.3 Manfaat PKL</h3><p class="pre">${textBlock(settings.standard_benefits)}</p><h3 class="subchapter">1.4 Waktu dan Tempat Pelaksanaan</h3><div class="meta-box"><p><b>Tempat PKL:</b> ${esc(internshipPlace)}</p><p><b>Unit/Bagian:</b> ${esc(report.placement_unit || '-')}</p><p><b>Periode:</b> ${esc(period)}</p></div></section>
+      <section class="page"><h2 class="chapter-title">BAB II<br>PROFIL TEMPAT PRAKTIK KERJA LAPANGAN</h2><h3 class="subchapter">2.1 Identitas dan Gambaran Umum Instansi</h3><p class="pre">${textBlock(report.institution_profile)}</p><h3 class="subchapter">2.2 Struktur Organisasi / Posisi Penempatan</h3><p class="pre">${textBlock(report.organization_structure, 'Struktur organisasi tidak dicantumkan.')}</p><h3 class="subchapter">2.3 Bidang atau Bagian Penempatan Siswa</h3><p>Siswa melaksanakan PKL pada unit/bagian <b>${esc(report.placement_unit || '-')}</b> di ${esc(internshipPlace)}.</p></section>
+      <section class="page"><h2 class="chapter-title">BAB III<br>PELAKSANAAN PRAKTIK KERJA LAPANGAN</h2><h3 class="subchapter">3.1 Gambaran Kegiatan PKL</h3>${activities.length ? `<ul class="bullet-list">${activities.map((x)=>`<li>${esc(x)}</li>`).join('')}</ul>` : '<p>Belum ada jurnal yang disetujui.</p>'}<h3 class="subchapter">3.2 Rincian Pelaksanaan Kegiatan</h3>${compactJournalSummaryTable(approved)}<p class="report-note">Rekap di atas memuat ${approved.length} jurnal disetujui dengan total ${totalHours} jam kegiatan.</p></section>
+      <section class="page"><h2 class="chapter-title">BAB III<br>PELAKSANAAN PRAKTIK KERJA LAPANGAN</h2><h3 class="subchapter">3.3 Pengetahuan dan Keterampilan yang Diperoleh</h3>${learnings.length ? `<ul class="bullet-list">${learnings.map((x)=>`<li>${esc(x)}</li>`).join('')}</ul>` : '<p>-</p>'}<h3 class="subchapter">3.4 Kendala dan Solusi</h3>${obstacles.length ? `<ol class="bullet-list">${obstacles.map((x)=>`<li>${esc(x)}</li>`).join('')}</ol>` : '<p>Tidak ada kendala dan solusi yang dicatat pada jurnal disetujui.</p>'}<h3 class="subchapter">3.5 Refleksi Pelaksanaan PKL</h3>${reflections.length ? `<ol class="bullet-list">${reflections.map((x)=>`<li>${esc(x)}</li>`).join('')}</ol>` : '<p>-</p>'}<h3 class="subchapter">3.6 Catatan Pembimbing</h3>${supervisorNotes.length ? `<ul class="bullet-list">${supervisorNotes.map((x)=>`<li>${esc(x)}</li>`).join('')}</ul>` : '<p>Belum ada catatan pembimbing pada jurnal disetujui.</p>'}</section>
+      <section class="page"><h2 class="chapter-title">BAB IV<br>DOKUMENTASI KEGIATAN</h2>${finalReportDocumentationHtml(approved, signedUrls)}</section>
+      <section class="page"><h2 class="chapter-title">BAB V<br>PENUTUP</h2><h3 class="subchapter">5.1 Kesimpulan</h3><p class="pre">${textBlock(report.conclusion)}</p>${suggestions}</section>
+      <section class="page"><h2 class="chapter-title">LAMPIRAN 1<br>REKAPITULASI JURNAL HARIAN</h2>${approved.length ? approved.map((item,index)=>`<div class="journal-appendix"><h4>${index+1}. ${esc(formatAttendanceDate(item.journal_date))} - ${esc(item.activity_title || 'Kegiatan PKL')}</h4><p><b>Lokasi:</b> ${esc(item.location || '-')} | <b>Jam:</b> ${esc(item.work_hours || 0)}</p><p><b>Uraian:</b> ${esc(item.description || '-')}</p><p><b>Tahapan:</b> ${esc((item.activity_stages || []).join(', ') || '-')}</p><p><b>Pengetahuan/Keterampilan:</b> ${esc(item.learning || '-')}</p><p><b>Kendala dan Solusi:</b> ${esc(item.obstacles || '-')}</p><p><b>Refleksi:</b> ${esc(item.reflection || '-')}</p><p><b>Catatan Pembimbing:</b> ${esc(item.supervisor_note || '-')}</p></div>`).join('') : '<p>Belum ada jurnal disetujui.</p>'}</section>
+      <section class="page"><h2 class="chapter-title">LAMPIRAN 2<br>DOKUMENTASI KEGIATAN</h2>${finalReportDocumentationHtml(approved, signedUrls)}</section>
+      <script>window.addEventListener('load',function(){const waits=[...document.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=img.onerror=resolve;}));Promise.all(waits).then(()=>setTimeout(()=>{${autoPrint ? 'window.print();' : ''}},600));});<\/script>
+    </body></html>`;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  } catch (error) {
+    console.error(error);
+    if (!printWindow.closed) printWindow.close();
+    toast(error.message || 'Laporan PKL gagal disiapkan.', 5500);
+  }
+}
+
 
 function downloadCsv(rows) {
   const head = ['Tanggal', 'Siswa', 'Kegiatan', 'Tahapan', 'Status', 'Jam'];

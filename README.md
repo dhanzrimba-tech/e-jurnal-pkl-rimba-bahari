@@ -1,99 +1,71 @@
-# E-Jurnal PKL SMK Kehutanan Rimba Bahari Sumedang
+# E-Jurnal PKL Rimba Bahari v6.26
 
-Aplikasi web responsif dan PWA untuk penggunaan daring lintas perangkat dan lintas jaringan internet. Data terpusat di Supabase. Frontend dan API dapat dipublikasikan melalui Vercel.
+Versi 6.26 menambahkan **Laporan PKL akhir berbasis E-Jurnal** tanpa menghapus fitur Cetak Jurnal Harian yang sudah ada.
 
-## Fitur utama
+## Fitur baru v6.26
 
-- Login empat peran: administrator, siswa, guru pembimbing, dan pembimbing lapangan.
-- Administrator membuat akun pengguna dan mengelola data siswa.
-- Administrator dapat **reset password siswa, guru, pembimbing lapangan, dan admin**.
-- Penempatan siswa ke guru pembimbing dan pembimbing lapangan.
-- Jurnal harian 40 hari, simpan draf, kirim, validasi, revisi, setujui, atau tolak.
-- Presensi daring.
-- Rekap dan ekspor CSV serta cetak sebagai PDF.
-- PWA sehingga dapat dipasang pada layar utama HP/laptop.
-- Row Level Security: siswa hanya mengakses datanya, pembimbing hanya mengakses siswa bimbingannya.
+- Siswa memiliki menu **Laporan PKL** untuk menyusun laporan akhir.
+- Data kegiatan, tahapan, pengetahuan/keterampilan, kendala dan solusi, refleksi, catatan pembimbing, jam kegiatan, serta foto diambil otomatis dari jurnal berstatus **Disetujui**.
+- Siswa cukup mengisi data naratif yang tidak tersedia pada jurnal: profil instansi, unit penempatan, struktur organisasi/posisi penempatan, kata pengantar, kesimpulan, dan saran.
+- Alur laporan: **Draf → Diajukan → Perlu Revisi / Disetujui**.
+- Guru Pembimbing dapat melihat laporan siswa bimbingan, memberikan catatan revisi, dan menyetujui laporan.
+- Administrator dapat memantau seluruh status laporan dan mengatur nama sekolah, tahun pelajaran, Kepala Sekolah, NIP, judul laporan, lokasi pengesahan, latar belakang, tujuan, serta manfaat PKL standar.
+- Pembimbing Lapangan dapat melihat dan mencetak laporan siswa yang menjadi bimbingannya.
+- Pratinjau dan cetak/PDF menyusun: Cover, Lembar Pengesahan, Kata Pengantar, Daftar Isi, BAB I sampai BAB V, Rekap Jurnal, dan Dokumentasi Foto.
+- Laporan yang belum disetujui diberi watermark status agar tidak tertukar dengan laporan final.
 
-## Mengapa perlu Vercel dan Supabase?
+## Upgrade database wajib
 
-`localhost` hanya bisa dibuka pada komputer sendiri. Dengan Vercel, aplikasi mempunyai alamat internet publik. Supabase menyimpan akun dan data secara daring sehingga pengguna dapat masuk dari perangkat dan jaringan yang berbeda.
+Jalankan satu kali file berikut melalui **Supabase Dashboard → SQL Editor**:
 
-## 1. Membuat proyek Supabase
-
-1. Buat proyek baru di Supabase.
-2. Buka **SQL Editor**.
-3. Salin seluruh isi `database/supabase.sql`, lalu jalankan.
-4. Buka **Authentication > Users**, buat satu akun administrator pertama.
-5. Salin UUID akun admin, lalu jalankan perintah admin yang tersedia pada bagian paling bawah `database/supabase.sql`.
-6. Buka **Project Settings > API**, catat:
-   - Project URL
-   - anon/public key
-   - service_role key
-
-**Penting:** service role key hanya dimasukkan ke Environment Variables Vercel. Jangan pernah ditulis pada `config.js` atau dibagikan kepada pengguna.
-
-## 2. Mengisi konfigurasi frontend
-
-Salin `config.example.js` menjadi `config.js`, lalu isi:
-
-```js
-window.APP_CONFIG = {
-  SUPABASE_URL: "https://PROJECT_ID.supabase.co",
-  SUPABASE_ANON_KEY: "ANON_KEY"
-};
+```text
+database/upgrade-final-pkl-report.sql
 ```
 
-File `config.js` memang dapat dibaca browser; hanya gunakan anon key di sana.
+SQL tersebut membuat tabel dan fungsi:
 
-## 3. Menjalankan lokal untuk pengujian
+- `pkl_reports`
+- `pkl_report_settings`
+- `save_pkl_report(...)`
+- `submit_pkl_report()`
+- `review_pkl_report(...)`
 
-Instal Node.js, lalu jalankan:
+SQL aman dijalankan ulang dan menggunakan RLS serta RPC supaya siswa tidak dapat menetapkan sendiri status persetujuan laporan.
 
-```bash
-npm install
-npm run dev
+## Update GitHub dari v6.25
+
+Timpa file berikut:
+
+```text
+app.js
+index.html
+styles.css
+sw.js
+package.json
+VERSION.txt
+README.md
 ```
 
-Vercel CLI akan menampilkan alamat lokal, biasanya `http://localhost:3000`.
+Tambahkan file baru:
 
-Bila fungsi API reset password diuji secara lokal, buat file `.env.local` dari `.env.example` dan isi semua variabel.
+```text
+database/upgrade-final-pkl-report.sql
+```
 
-## 4. Publikasi ke Vercel
+Folder `api/`, aset, `config.js`, `vercel.json`, dan migration database lama tetap dipertahankan.
 
-1. Buat akun GitHub dan repositori baru.
-2. Unggah seluruh isi folder aplikasi ke repositori.
-3. Masuk ke Vercel, pilih **Add New Project**, lalu hubungkan repositori tersebut.
-4. Pada **Settings > Environment Variables**, tambahkan:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-5. Klik Deploy.
-6. Setelah selesai, Vercel memberikan alamat seperti `https://e-jurnal-rimba-bahari.vercel.app`.
+Setelah commit dan deployment Vercel selesai, lakukan **Ctrl + F5** atau tutup dan buka kembali PWA agar service worker v33 aktif.
 
-Semua siswa, guru, dan pembimbing dapat membuka alamat tersebut dengan koneksi internet apa pun.
+## Pengujian minimum
 
-## 5. Menambah akun dan data siswa
+1. Login siswa, buka **Laporan PKL**, isi data naratif dan simpan draf.
+2. Pastikan jurnal yang akan masuk laporan sudah berstatus **Disetujui**.
+3. Siswa klik **Ajukan ke Guru Pembimbing**.
+4. Login Guru Pembimbing, buka **Laporan PKL Siswa**, lalu pilih **Tinjau**.
+5. Uji **Minta Revisi** dan **Setujui Laporan**.
+6. Buka **Pratinjau** dan **Cetak / Simpan PDF**, lalu pastikan foto dokumentasi muncul.
+7. Login Administrator, cek **Laporan PKL** dan simpan pengaturan format sekolah.
 
-1. Login sebagai administrator.
-2. Buka **Akun Pengguna > Tambah Akun**.
-3. Buat akun siswa, guru, atau pembimbing lapangan.
-4. Untuk siswa, lanjut ke **Data Siswa > Tambah Data Siswa**.
-5. Pilih akun siswa, isi NIS, kelas, tempat PKL, guru pembimbing, dan pembimbing lapangan.
+## Catatan keamanan
 
-## 6. Reset password oleh administrator
-
-1. Login sebagai administrator.
-2. Buka **Akun Pengguna**.
-3. Cari akun siswa, guru, atau pembimbing lapangan.
-4. Klik **Reset Password**.
-5. Masukkan password baru minimal 8 karakter dan konfirmasikan.
-6. Sistem memperbarui password melalui serverless API dengan service role key dan mencatat tindakan ke audit log.
-
-## Catatan produksi
-
-- Gunakan HTTPS dari Vercel.
-- Jangan menyimpan service role key di frontend.
-- Aktifkan kebijakan password yang kuat pada Supabase.
-- Lakukan backup database berkala.
-- Tambahkan Supabase Storage bila dokumentasi foto akan diaktifkan.
-- Pengiriman email reset mandiri dapat ditambahkan melalui Supabase Auth; versi ini menitikberatkan reset langsung oleh administrator sesuai permintaan.
+Password autentikasi tetap tidak disimpan atau ditampilkan dalam bentuk terbaca. Fitur Bantuan Password Administrator dari v6.25 tetap dipertahankan.

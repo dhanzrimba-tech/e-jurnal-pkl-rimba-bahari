@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v32-admin-password-assistance';
+const CACHE = 'ejurnal-rbs-v33-final-pkl-report';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=32',
-  '/app.js?v=32',
-  '/config.js?v=32',
+  '/styles.css?v=33',
+  '/app.js?v=33',
+  '/config.js?v=33',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

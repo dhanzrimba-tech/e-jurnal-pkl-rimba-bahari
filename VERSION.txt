@@ -1,4 +1,5 @@
 E-Jurnal PKL Rimba Bahari
-Versi arsip lengkap: 6.25
+Versi arsip lengkap: 6.26
 Tanggal paket: 12 Agustus 2026
-Pembaruan: Guru Pembimbing memiliki menu Cetak Laporan dengan foto dokumentasi, dan Administrator memiliki Bantuan Password untuk membuat serta menampilkan password sementara baru tanpa menyimpan password pengguna dalam bentuk terbaca.
+Pembaruan: fitur Laporan PKL akhir berbasis jurnal untuk siswa, alur Draft → Diajukan → Perlu Revisi/Disetujui, review Guru Pembimbing, monitoring Administrator, pengaturan identitas laporan sekolah, pratinjau dan cetak/PDF lengkap dengan dokumentasi foto serta lampiran jurnal.
+Catatan instalasi: jalankan database/upgrade-final-pkl-report.sql satu kali di Supabase SQL Editor.
