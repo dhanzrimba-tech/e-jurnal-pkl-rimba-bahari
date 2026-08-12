@@ -86,7 +86,7 @@ const menus = {
   teacher: [
     ['dashboard', 'Dashboard'], ['guided-students', 'Siswa Bimbingan'],
     ['journals', 'Monitoring Jurnal'], ['guided-journals', 'Semua Jurnal Bimbingan'],
-    ['attendance', 'Kehadiran Siswa'], ['reports', 'Laporan'],
+    ['attendance', 'Kehadiran Siswa'], ['reports', 'Cetak Laporan'],
   ],
   field_supervisor: [
     ['dashboard', 'Dashboard'], ['journals', 'Validasi Jurnal'],
@@ -405,7 +405,7 @@ async function renderUsers() {
     admin: users.filter((item) => item.role === 'admin').length,
   };
 
-  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">MANAJEMEN PENGGUNA</span><h3>Akun Pengguna</h3><p>Administrator dapat melihat jumlah akun, mengelola profil, serta menghapus langsung akun nonadministrator.</p></div><button class="btn primary" id="addUserBtn">Tambah Akun</button></div>
+  $('#content').innerHTML = `<div class="section-head"><div><span class="section-kicker">MANAJEMEN PENGGUNA</span><h3>Akun Pengguna</h3><p>Administrator dapat mengelola akun, membantu pengguna yang lupa password dengan membuat password sementara baru, serta menghapus langsung akun nonadministrator.</p></div><button class="btn primary" id="addUserBtn">Tambah Akun</button></div>
     <div class="account-summary-grid" aria-label="Ringkasan jumlah akun pengguna">
       <button type="button" class="account-summary-card total active" data-role-summary="" aria-label="Tampilkan semua akun">
         <span class="account-summary-icon">${navIcons.users}</span><span><small>Total Akun</small><strong>${userCounts.total}</strong><em>Seluruh pengguna terdaftar</em></span>
@@ -423,7 +423,7 @@ async function renderUsers() {
         <span class="account-summary-icon">A</span><span><small>Administrator</small><strong>${userCounts.admin}</strong><em>Akun pengelola sistem</em></span>
       </button>
     </div>
-    <div class="info-strip account-delete-direct-note"><strong>Penghapusan langsung oleh administrator.</strong> Alasan wajib diisi dan tindakan tidak dapat dibatalkan. Akun administrator tetap dilindungi.</div>
+    <div class="info-strip password-security-note"><strong>Keamanan password.</strong> Password lama pengguna tidak dapat dilihat. Jika pengguna lupa password, administrator dapat membuat password sementara baru lalu menyalinnya untuk diberikan langsung kepada pengguna.</div><div class="info-strip account-delete-direct-note"><strong>Penghapusan langsung oleh administrator.</strong> Alasan wajib diisi dan tindakan tidak dapat dibatalkan. Akun administrator tetap dilindungi.</div>
     <div class="toolbar user-toolbar"><input id="userSearch" placeholder="Cari nama atau email..."><select id="roleFilter"><option value="">Semua peran</option><option value="student">Siswa</option><option value="teacher">Guru</option><option value="field_supervisor">Pembimbing lapangan</option><option value="admin">Administrator</option></select></div>
     <div class="user-list-caption"><span id="userListCount">Menampilkan ${users.length} akun</span><small>Nomor urut menyesuaikan hasil pencarian dan filter.</small></div>
     <div class="table-wrap user-table-wrap"><table><thead><tr><th class="number-column">No.</th><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="userRows"></tbody></table></div>`;
@@ -438,7 +438,7 @@ async function renderUsers() {
       const deletionAction = item.role === 'admin'
         ? '<span class="protected-account">Dilindungi</span>'
         : `<button class="btn danger delete-user" data-id="${item.id}">Hapus Akun</button>`;
-      return `<tr><td class="row-number">${index + 1}</td><td>${esc(item.full_name)}</td><td>${esc(item.email)}</td><td>${esc(roles[item.role] || item.role)}</td><td>${userStatusBadge(item)}</td><td><div class="actions"><button class="btn warn reset-pass" data-id="${item.id}" data-name="${esc(item.full_name)}">Reset Password</button><button class="btn secondary edit-profile" data-id="${item.id}">Edit</button>${deletionAction}</div></td></tr>`;
+      return `<tr><td class="row-number">${index + 1}</td><td>${esc(item.full_name)}</td><td>${esc(item.email)}</td><td>${esc(roles[item.role] || item.role)}</td><td>${userStatusBadge(item)}</td><td><div class="actions"><button class="btn warn reset-pass" data-id="${item.id}" data-name="${esc(item.full_name)}" data-email="${esc(item.email)}">Bantuan Password</button><button class="btn secondary edit-profile" data-id="${item.id}">Edit</button>${deletionAction}</div></td></tr>`;
     }).join('') || '<tr><td colspan="6" class="empty">Tidak ada data yang sesuai dengan pencarian atau filter.</td></tr>';
 
     const filterLabel = role ? (roles[role] || role) : 'semua peran';
@@ -463,7 +463,7 @@ async function renderUsers() {
 
 function bindUserActions(data) {
   document.querySelectorAll('.reset-pass').forEach((button) => {
-    button.onclick = () => openResetModal(button.dataset.id, button.dataset.name);
+    button.onclick = () => openResetModal(button.dataset.id, button.dataset.name, button.dataset.email);
   });
   document.querySelectorAll('.edit-profile').forEach((button) => {
     button.onclick = () => openEditProfile(data.find((item) => item.id === button.dataset.id));
@@ -578,16 +578,106 @@ function openUserModal() {
   };
 }
 
-function openResetModal(id, name) {
-  modal('Reset Password', `<p>Atur password baru untuk <strong>${esc(name)}</strong>.</p><form id="resetForm" class="form-stack"><label>Password baru<input name="new_password" type="password" minlength="8" required></label><label>Ulangi password<input name="confirm" type="password" minlength="8" required></label><div class="actions"><button class="btn warn">Reset Password</button><button type="button" class="btn secondary modal-close">Batal</button></div></form>`);
+function generateTemporaryPassword(length = 14) {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%';
+  const all = upper + lower + digits + symbols;
+  const randomIndex = (max) => {
+    const values = new Uint32Array(1);
+    crypto.getRandomValues(values);
+    return values[0] % max;
+  };
+  const chars = [
+    upper[randomIndex(upper.length)],
+    lower[randomIndex(lower.length)],
+    digits[randomIndex(digits.length)],
+    symbols[randomIndex(symbols.length)],
+  ];
+  while (chars.length < Math.max(8, length)) chars.push(all[randomIndex(all.length)]);
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomIndex(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
+
+async function copyTextValue(value, input) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast('Password sementara disalin.');
+  } catch {
+    if (input) {
+      input.focus();
+      input.select();
+      document.execCommand('copy');
+      toast('Password sementara disalin.');
+    }
+  }
+}
+
+function showTemporaryPasswordResult({ name, email, password }) {
+  modal('Password Sementara Berhasil Dibuat', `<div class="temporary-password-result">
+    <div class="approval-warning teacher"><strong>Password lama tidak ditampilkan.</strong><p>Sistem telah mengganti password akun dengan password sementara baru di bawah ini. Password ini tidak disimpan di profil pengguna.</p></div>
+    <div class="card account-delete-summary"><p><strong>Nama:</strong> ${esc(name)}</p><p><strong>Email:</strong> ${esc(email || '-')}</p></div>
+    <label class="temporary-password-field">Password sementara
+      <div class="temporary-password-copy-row"><input id="temporaryPasswordValue" value="${esc(password)}" readonly><button type="button" class="btn primary" id="copyTemporaryPassword">Salin Password</button></div>
+    </label>
+    <p class="form-help">Berikan password ini langsung kepada pengguna melalui jalur yang aman. Setelah modal ditutup, aplikasi tidak menyediakan daftar password untuk dibuka kembali.</p>
+    <div class="actions"><button type="button" class="btn secondary modal-close">Selesai</button></div>
+  </div>`);
+  const input = $('#temporaryPasswordValue');
+  $('#copyTemporaryPassword').onclick = () => copyTextValue(password, input);
+  setTimeout(() => { input?.focus(); input?.select(); }, 50);
+}
+
+function openResetModal(id, name, email = '') {
+  const initialPassword = generateTemporaryPassword();
+  modal('Bantuan Password Pengguna', `<div class="approval-warning teacher"><strong>Password lama tidak dapat dilihat.</strong><p>Untuk membantu pengguna yang lupa password, buat password sementara baru. Setelah reset berhasil, password sementara akan ditampilkan satu kali agar dapat disalin.</p></div>
+    <div class="card account-delete-summary"><p><strong>Nama:</strong> ${esc(name)}</p><p><strong>Email:</strong> ${esc(email || '-')}</p></div>
+    <form id="resetForm" class="form-stack">
+      <label>Password sementara baru
+        <div class="temporary-password-copy-row"><input id="newTemporaryPassword" name="new_password" type="text" minlength="8" autocomplete="new-password" value="${esc(initialPassword)}" required><button type="button" class="btn secondary" id="regenerateTemporaryPassword">Buat Acak</button></div>
+      </label>
+      <label>Ulangi password<input name="confirm" type="text" minlength="8" autocomplete="new-password" value="${esc(initialPassword)}" required></label>
+      <p class="form-help">Minimal 8 karakter. Anda dapat memakai password acak yang dibuat sistem atau menggantinya dengan password sementara lain.</p>
+      <div class="actions"><button class="btn warn" id="resetPasswordSubmit">Reset & Tampilkan Password</button><button type="button" class="btn secondary modal-close">Batal</button></div>
+      <p class="form-help" id="resetPasswordStatus" aria-live="polite"></p>
+    </form>`);
+
+  $('#regenerateTemporaryPassword').onclick = () => {
+    const password = generateTemporaryPassword();
+    $('#newTemporaryPassword').value = password;
+    $('#resetForm [name="confirm"]').value = password;
+  };
+
   $('#resetForm').onsubmit = async (event) => {
     event.preventDefault();
-    const fields = Object.fromEntries(new FormData(event.currentTarget));
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const fields = Object.fromEntries(new FormData(form));
     if (fields.new_password !== fields.confirm) return toast('Konfirmasi password tidak sama');
-    const result = await api('/api/reset-password', { user_id: id, new_password: fields.new_password });
-    if (result.error) return toast(result.error);
-    closeModal();
-    toast('Password berhasil direset');
+    const button = $('#resetPasswordSubmit');
+    const status = $('#resetPasswordStatus');
+    button.disabled = true;
+    button.textContent = 'Mereset password...';
+    status.textContent = 'Memperbarui password pengguna melalui server.';
+    try {
+      const result = await api('/api/reset-password', { user_id: id, new_password: fields.new_password });
+      if (result.error) {
+        status.textContent = result.error;
+        return toast(result.error);
+      }
+      const password = String(fields.new_password);
+      showTemporaryPasswordResult({ name, email, password });
+      toast('Password pengguna berhasil direset.');
+    } finally {
+      if (document.body.contains(button)) {
+        button.disabled = false;
+        button.textContent = 'Reset & Tampilkan Password';
+      }
+    }
   };
 }
 
@@ -2506,14 +2596,20 @@ async function renderReports() {
   const rows = state.reportJournals;
   const hours = rows.reduce((total, item) => total + (Number(item.work_hours) || 0), 0);
   const studentOptions = [...new Map(rows.map((item) => [item.student_id, item.student?.full_name || state.profile.full_name || 'Siswa'])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'id'));
-  $('#content').innerHTML = `<div class="page-intro report-page-intro"><div><span class="section-kicker">LAPORAN KEGIATAN PKL</span><h3>Cetak Laporan Jurnal Harian</h3><p>Hasil cetak menampilkan uraian jurnal harian secara lengkap, bukan hanya tabel rekap.</p></div><div class="report-action-buttons"><button class="btn secondary" id="exportCsv">Ekspor CSV</button><button class="btn primary btn-emphasis" id="printDailyJournal">🖨 Cetak Jurnal Harian / PDF</button></div></div>
+  const isTeacherReport = state.profile.role === 'teacher';
+  const reportHeading = isTeacherReport ? 'Cetak Laporan Siswa Bimbingan' : 'Cetak Laporan Jurnal Harian';
+  const reportDescription = isTeacherReport
+    ? 'Pilih siswa bimbingan, periode, dan status jurnal. Hasil cetak memuat jurnal lengkap beserta lampiran foto dokumentasi kegiatan.'
+    : 'Hasil cetak menampilkan uraian jurnal harian secara lengkap beserta lampiran foto dokumentasi kegiatan.';
+  const printButtonLabel = isTeacherReport ? '🖨 Cetak Laporan Siswa + Foto / PDF' : '🖨 Cetak Jurnal + Foto / PDF';
+  $('#content').innerHTML = `<div class="page-intro report-page-intro"><div><span class="section-kicker">LAPORAN KEGIATAN PKL</span><h3>${reportHeading}</h3><p>${reportDescription}</p></div><div class="report-action-buttons"><button class="btn secondary" id="exportCsv">Ekspor CSV</button><button class="btn primary btn-emphasis" id="printDailyJournal">${printButtonLabel}</button></div></div>
     <div class="cards"><div class="card stat"><strong>${rows.length}</strong><span>Total jurnal</span></div><div class="card stat"><strong>${hours}</strong><span>Total jam kegiatan</span></div></div>
-    <section class="data-panel report-filter-panel"><div class="attendance-filter-heading"><div><strong>Filter Laporan Jurnal</strong><span>Filter menentukan jurnal yang akan dicetak.</span></div><button class="btn secondary" id="resetJournalReportFilter" type="button">Reset Filter</button></div><div class="attendance-filter-grid report-filter-grid"><label>Tanggal mulai<input id="reportStartDate" type="date"></label><label>Tanggal selesai<input id="reportEndDate" type="date"></label>${state.profile.role === 'student' ? '' : `<label>Siswa<select id="reportStudent"><option value="">Semua siswa</option>${studentOptions.map(([id,name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('')}</select></label>`}<label>Status<select id="reportStatus"><option value="">Semua status</option><option value="draft">Draf</option><option value="submitted">Menunggu validasi</option><option value="approved">Disetujui</option><option value="revision">Perlu perbaikan</option><option value="rejected">Ditolak</option></select></label></div></section>
-    <div class="data-panel"><div class="panel-title"><div><h4>Daftar Jurnal Harian</h4><p id="journalReportMeta">${rows.length} jurnal tersedia.</p></div><span class="policy-note">Cetak mengikuti filter aktif</span></div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Tahapan</th><th>Status</th><th>Jam</th></tr></thead><tbody id="journalReportRows"></tbody></table></div></div>`;
+    <section class="data-panel report-filter-panel"><div class="attendance-filter-heading"><div><strong>Filter Laporan Jurnal</strong><span>${isTeacherReport ? 'Pilih satu siswa jika ingin mencetak laporan individual. Tanpa memilih siswa, laporan seluruh siswa bimbingan yang sesuai filter akan dicetak.' : 'Filter menentukan jurnal yang akan dicetak.'}</span></div><button class="btn secondary" id="resetJournalReportFilter" type="button">Reset Filter</button></div><div class="attendance-filter-grid report-filter-grid"><label>Tanggal mulai<input id="reportStartDate" type="date"></label><label>Tanggal selesai<input id="reportEndDate" type="date"></label>${state.profile.role === 'student' ? '' : `<label>Siswa<select id="reportStudent"><option value="">Semua siswa</option>${studentOptions.map(([id,name]) => `<option value="${esc(id)}">${esc(name)}</option>`).join('')}</select></label>`}<label>Status<select id="reportStatus"><option value="">Semua status</option><option value="draft">Draf</option><option value="submitted">Menunggu validasi</option><option value="approved">Disetujui</option><option value="revision">Perlu perbaikan</option><option value="rejected">Ditolak</option></select></label></div></section>
+    <div class="data-panel"><div class="panel-title"><div><h4>Daftar Jurnal Harian</h4><p id="journalReportMeta">${rows.length} jurnal tersedia.</p></div><span class="policy-note">Cetak mengikuti filter aktif</span></div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Kegiatan</th><th>Tahapan</th><th>Foto</th><th>Status</th><th>Jam</th></tr></thead><tbody id="journalReportRows"></tbody></table></div></div>`;
 
   const draw = () => {
     const filtered = getFilteredJournalReportRows();
-    $('#journalReportRows').innerHTML = filtered.map((item) => `<tr><td>${esc(formatAttendanceDate(item.journal_date))}</td><td>${esc(item.student?.full_name || state.profile.full_name)}</td><td><strong>${esc(item.activity_title)}</strong><small class="activity-location">${esc(item.location || '-')}</small></td><td>${esc((item.activity_stages || []).join(', ') || '-')}</td><td>${statusBadge(item.status)}</td><td>${esc(item.work_hours || 0)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Tidak ada jurnal yang sesuai dengan filter.</td></tr>';
+    $('#journalReportRows').innerHTML = filtered.map((item) => `<tr><td>${esc(formatAttendanceDate(item.journal_date))}</td><td>${esc(item.student?.full_name || state.profile.full_name)}</td><td><strong>${esc(item.activity_title)}</strong><small class="activity-location">${esc(item.location || '-')}</small></td><td>${esc((item.activity_stages || []).join(', ') || '-')}</td><td>${(item.photo_paths || []).length ? `<span class="photo-count">▣ ${item.photo_paths.length}</span>` : '<span class="muted">-</span>'}</td><td>${statusBadge(item.status)}</td><td>${esc(item.work_hours || 0)}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Tidak ada jurnal yang sesuai dengan filter.</td></tr>';
     $('#journalReportMeta').textContent = `${filtered.length} dari ${rows.length} jurnal akan dicetak.`;
   };
   ['reportStartDate','reportEndDate','reportStudent','reportStatus'].forEach((id) => $(`#${id}`)?.addEventListener('change', draw));
@@ -2537,10 +2633,45 @@ function getFilteredJournalReportRows() {
   });
 }
 
-function printDailyJournalReport(rows) {
+function journalReportPhotoSection(item, signedUrls) {
+  const paths = (item.photo_paths || []).filter(Boolean);
+  if (!paths.length) {
+    return `<section class="documentation-section"><h3>Lampiran Dokumentasi Kegiatan</h3><p class="documentation-empty">Tidak ada foto dokumentasi pada jurnal ini.</p></section>`;
+  }
+
+  const photos = paths.map((path, index) => {
+    const url = signedUrls[path] || '';
+    if (!url) {
+      return `<figure class="documentation-photo photo-unavailable"><div class="photo-unavailable-box">Foto ${index + 1} tidak dapat dimuat</div><figcaption>Dokumentasi kegiatan ${index + 1}</figcaption></figure>`;
+    }
+    return `<figure class="documentation-photo"><img src="${esc(url)}" alt="Dokumentasi kegiatan ${index + 1}"><figcaption>Dokumentasi kegiatan ${index + 1}</figcaption></figure>`;
+  }).join('');
+
+  return `<section class="documentation-section"><h3>Lampiran Dokumentasi Kegiatan</h3><div class="documentation-grid count-${Math.min(paths.length, MAX_JOURNAL_PHOTOS)}">${photos}</div></section>`;
+}
+
+async function printDailyJournalReport(rows) {
   if (!rows.length) return toast('Tidak ada jurnal yang dapat dicetak.');
+
+  // Buka jendela cetak langsung dari klik pengguna agar tidak diblokir browser,
+  // lalu siapkan signed URL foto sebelum merender dokumen final.
   const printWindow = window.open('', '_blank');
   if (!printWindow) return toast('Popup diblokir browser. Izinkan popup lalu coba kembali.');
+  printWindow.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Menyiapkan Laporan Jurnal</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#1d2939}strong{color:#174c35}</style></head><body><strong>Menyiapkan laporan jurnal dan foto dokumentasi...</strong><p>Mohon tunggu sebentar. Jangan tutup halaman ini.</p></body></html>`);
+  printWindow.document.close();
+
+  const photoPaths = [...new Set(rows.flatMap((item) => (item.photo_paths || []).filter(Boolean)))];
+  const signedUrls = {};
+  const PHOTO_BATCH_SIZE = 50;
+  for (let index = 0; index < photoPaths.length; index += PHOTO_BATCH_SIZE) {
+    const batch = photoPaths.slice(index, index + PHOTO_BATCH_SIZE);
+    Object.assign(signedUrls, await signedPhotoUrls(batch));
+  }
+
+  if (printWindow.closed) return;
+
+  const signerLabel = state.profile.role === 'teacher' ? 'Guru Pembimbing' : 'Pembimbing';
+  const signerName = state.profile.role === 'teacher' ? state.profile.full_name : '________________________';
   const entries = rows.map((item, index) => `<article class="journal-entry">
     <div class="entry-heading"><div><span>JURNAL HARIAN KE-${index + 1}</span><h2>${esc(item.activity_title || 'Kegiatan PKL')}</h2></div><strong>${esc(formatAttendanceDate(item.journal_date, true))}</strong></div>
     <table class="identity"><tr><th>Nama Siswa</th><td>${esc(item.student?.full_name || state.profile.full_name || '-')}</td><th>Jam Kegiatan</th><td>${esc(item.work_hours || 0)} jam</td></tr><tr><th>Lokasi</th><td>${esc(item.location || '-')}</td><th>Cuaca</th><td>${esc(item.weather || '-')}</td></tr><tr><th>Status</th><td>${esc(statusBadgeText(item.status))}</td><th>Dokumentasi</th><td>${(item.photo_paths || []).length} foto</td></tr></table>
@@ -2549,12 +2680,15 @@ function printDailyJournalReport(rows) {
     <section><h3>Pengetahuan / Keterampilan</h3><p>${esc(item.learning || '-')}</p></section>
     <section><h3>Kendala dan Solusi</h3><p>${esc(item.obstacles || '-')}</p></section>
     <section><h3>Refleksi</h3><p>${esc(item.reflection || '-')}</p></section>
+    ${journalReportPhotoSection(item, signedUrls)}
     <section class="supervisor-note"><h3>Catatan Pembimbing</h3><p>${esc(item.supervisor_note || '-')}</p></section>
-    <div class="signature"><div><span>Siswa</span><b>${esc(item.student?.full_name || state.profile.full_name || '-')}</b></div><div><span>Pembimbing</span><b>________________________</b></div></div>
+    <div class="signature"><div><span>Siswa</span><b>${esc(item.student?.full_name || state.profile.full_name || '-')}</b></div><div><span>${esc(signerLabel)}</span><b>${esc(signerName)}</b></div></div>
   </article>`).join('');
+
+  printWindow.document.open();
   printWindow.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Laporan Jurnal Harian PKL</title><style>
-    @page{size:A4;margin:16mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1d2939;margin:0}.report-header{text-align:center;border-bottom:3px solid #174c35;padding-bottom:12px;margin-bottom:18px}.report-header h1{margin:0;color:#174c35;font-size:22px}.report-header p{margin:5px 0 0}.journal-entry{page-break-after:always}.journal-entry:last-child{page-break-after:auto}.entry-heading{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-left:6px solid #174c35;background:#f2f8f5;padding:12px 14px;margin-bottom:14px}.entry-heading span{font-size:10px;font-weight:bold;color:#667085}.entry-heading h2{font-size:18px;margin:4px 0 0}.entry-heading>strong{font-size:12px;white-space:nowrap}.identity{width:100%;border-collapse:collapse;margin-bottom:14px}.identity th,.identity td{border:1px solid #d0d5dd;padding:7px;font-size:11px;text-align:left}.identity th{background:#f7f9f8;width:16%}section{margin-bottom:12px}section h3{font-size:12px;color:#174c35;margin:0 0 5px;border-bottom:1px solid #d8e4de;padding-bottom:4px}section p{font-size:11px;line-height:1.55;white-space:pre-wrap;margin:0}.supervisor-note{background:#fff8e6;padding:10px;border-radius:8px}.signature{display:flex;justify-content:space-between;margin-top:35px;text-align:center}.signature div{width:42%}.signature span{display:block;font-size:11px;margin-bottom:45px}.signature b{font-size:11px}.print-actions{position:fixed;right:15px;top:15px}@media print{.print-actions{display:none}}
-  </style></head><body><button class="print-actions" onclick="window.print()">Cetak / Simpan PDF</button><header class="report-header"><h1>LAPORAN JURNAL HARIAN PKL</h1><p>SMK Kehutanan Rimba Bahari Sumedang</p><p>Dicetak oleh: ${esc(state.profile.full_name)} · ${esc(new Intl.DateTimeFormat('id-ID',{dateStyle:'long'}).format(new Date()))}</p></header>${entries}<script>window.onload=()=>setTimeout(()=>window.print(),300);<\/script></body></html>`);
+    @page{size:A4;margin:16mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1d2939;margin:0}.report-header{text-align:center;border-bottom:3px solid #174c35;padding-bottom:12px;margin-bottom:18px}.report-header h1{margin:0;color:#174c35;font-size:22px}.report-header p{margin:5px 0 0}.journal-entry{page-break-after:always}.journal-entry:last-child{page-break-after:auto}.entry-heading{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-left:6px solid #174c35;background:#f2f8f5;padding:12px 14px;margin-bottom:14px}.entry-heading span{font-size:10px;font-weight:bold;color:#667085}.entry-heading h2{font-size:18px;margin:4px 0 0}.entry-heading>strong{font-size:12px;white-space:nowrap}.identity{width:100%;border-collapse:collapse;margin-bottom:14px}.identity th,.identity td{border:1px solid #d0d5dd;padding:7px;font-size:11px;text-align:left}.identity th{background:#f7f9f8;width:16%}section{margin-bottom:12px}section h3{font-size:12px;color:#174c35;margin:0 0 5px;border-bottom:1px solid #d8e4de;padding-bottom:4px}section p{font-size:11px;line-height:1.55;white-space:pre-wrap;margin:0}.documentation-section{break-inside:avoid;page-break-inside:avoid;margin-top:14px}.documentation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.documentation-grid.count-1{grid-template-columns:minmax(0,1fr);max-width:75%;margin:0 auto}.documentation-grid.count-3{grid-template-columns:repeat(3,minmax(0,1fr))}.documentation-photo{margin:0;border:1px solid #d0d5dd;border-radius:7px;overflow:hidden;background:#f8faf9;break-inside:avoid;page-break-inside:avoid}.documentation-photo img{display:block;width:100%;height:165px;object-fit:contain;background:#eef3f0}.documentation-photo figcaption{font-size:9px;color:#667085;text-align:center;padding:6px 8px}.photo-unavailable-box{height:165px;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;color:#667085;font-size:10px;background:#f2f4f7}.documentation-empty{padding:9px 10px;background:#f8faf9;border:1px dashed #cfd8d3;color:#667085}.supervisor-note{background:#fff8e6;padding:10px;border-radius:8px}.signature{display:flex;justify-content:space-between;margin-top:35px;text-align:center;break-inside:avoid;page-break-inside:avoid}.signature div{width:42%}.signature span{display:block;font-size:11px;margin-bottom:45px}.signature b{font-size:11px}.print-actions{position:fixed;right:15px;top:15px;z-index:10}@media print{.print-actions{display:none}.documentation-photo{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body><button class="print-actions" onclick="window.print()">Cetak / Simpan PDF</button><header class="report-header"><h1>LAPORAN JURNAL HARIAN PKL</h1><p>SMK Kehutanan Rimba Bahari Sumedang</p><p>${state.profile.role === 'teacher' ? 'Dicetak oleh Guru Pembimbing' : 'Dicetak oleh'}: ${esc(state.profile.full_name)} · ${esc(new Intl.DateTimeFormat('id-ID',{dateStyle:'long'}).format(new Date()))}</p></header>${entries}<script>window.onload=()=>setTimeout(()=>window.print(),500);<\/script></body></html>`);
   printWindow.document.close();
 }
 

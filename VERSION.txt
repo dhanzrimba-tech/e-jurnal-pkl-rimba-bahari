@@ -1,0 +1,4 @@
+E-Jurnal PKL Rimba Bahari
+Versi arsip lengkap: 6.25
+Tanggal paket: 12 Agustus 2026
+Pembaruan: Guru Pembimbing memiliki menu Cetak Laporan dengan foto dokumentasi, dan Administrator memiliki Bantuan Password untuk membuat serta menampilkan password sementara baru tanpa menyimpan password pengguna dalam bentuk terbaca.

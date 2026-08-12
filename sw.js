@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v29-admin-delete-all-journals';
+const CACHE = 'ejurnal-rbs-v32-admin-password-assistance';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=28',
-  '/app.js?v=28',
-  '/config.js?v=28',
+  '/styles.css?v=32',
+  '/app.js?v=32',
+  '/config.js?v=32',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'

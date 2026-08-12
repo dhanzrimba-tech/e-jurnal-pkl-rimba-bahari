@@ -1173,3 +1173,16 @@ tbody tr:last-child td { border-bottom: 0; }
 .danger-confirm-choice input { width: auto !important; margin-top: 2px; }
 .danger-confirm-choice span { color: #8f2d24; font-weight: 750; line-height: 1.45; }
 @media(max-width:760px){.admin-delete-journal-summary{grid-template-columns:1fr}.admin-delete-journal-summary .wide{grid-column:auto}}
+
+
+/* v6.25 - Bantuan password administrator */
+.password-security-note { margin-bottom: 12px; }
+.temporary-password-result { display: grid; gap: 14px; }
+.temporary-password-field { display: grid; gap: 7px; font-weight: 700; }
+.temporary-password-copy-row { display: flex; align-items: stretch; gap: 8px; }
+.temporary-password-copy-row input { flex: 1 1 260px; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .035em; }
+.temporary-password-copy-row .btn { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 640px) {
+  .temporary-password-copy-row { flex-direction: column; }
+  .temporary-password-copy-row input { flex-basis: auto; }
+}
