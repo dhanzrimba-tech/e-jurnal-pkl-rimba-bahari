@@ -111,8 +111,35 @@ button { -webkit-tap-highlight-color: transparent; }
   position: relative;
   z-index: 1;
 }
-.brand-block { text-align: center; }
-.logo { width: 112px; height: 112px; object-fit: contain; }
+.brand-block {
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin: -32px -32px 26px;
+  padding: 28px 32px 24px;
+  border-radius: 28px 28px 0 0;
+  background:
+    linear-gradient(180deg, rgba(8, 61, 44, .10), rgba(255,255,255,.98) 88%),
+    url('/assets/forest-logo-bg.jpg') center 34% / cover no-repeat;
+}
+.brand-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.55) 58%, rgba(255,255,255,.98) 100%);
+}
+.brand-block > * { position: relative; z-index: 1; }
+.logo {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  padding: 9px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 12px 28px rgba(14,74,55,.20), 0 0 0 5px rgba(255,255,255,.38);
+}
 .brand-block h1 { margin: 12px 0 4px; color: var(--forest-800); font-size: 30px; letter-spacing: -.03em; }
 .brand-block p { margin: 0 0 26px; color: var(--muted); }
 .form-stack { display: grid; gap: 16px; }
