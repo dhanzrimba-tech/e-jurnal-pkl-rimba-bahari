@@ -1,11 +1,13 @@
 {
   "name": "E-Jurnal PKL SMK Kehutanan Rimba Bahari Sumedang",
   "short_name": "E-Jurnal PKL",
+  "description": "Sistem jurnal, presensi, dokumentasi, dan monitoring kegiatan PKL.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#F7F4E9",
-  "theme_color": "#174C35",
+  "background_color": "#F3F7F5",
+  "theme_color": "#0E4A37",
   "icons": [
-    {"src":"/assets/logo-sekolah.png","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+    { "src": "/assets/logo-sekolah.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
