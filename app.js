@@ -292,6 +292,8 @@ function renderNav() {
 
 async function navigate(page) {
   state.page = page;
+  const appShell = document.querySelector('.app-shell');
+  if (appShell) appShell.classList.toggle('dashboard-theme', page === 'dashboard');
   document.querySelector('.sidebar').classList.remove('open');
   renderNav();
   const label = (menus[state.profile.role] || []).find((item) => item[0] === page)?.[1] || 'Dashboard';

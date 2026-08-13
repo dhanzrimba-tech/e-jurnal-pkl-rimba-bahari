@@ -1233,3 +1233,156 @@ tbody tr:last-child td { border-bottom: 0; }
 .daily-task-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.daily-task-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;width:100%;padding:15px;border:1px solid var(--border);border-radius:14px;background:#fff;text-align:left;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.daily-task-card:hover{transform:translateY(-1px);box-shadow:0 9px 20px rgba(31,50,42,.08)}.daily-task-card.missing{border-color:#efb68f;background:#fffdfb}.daily-task-card.done{border-color:#b9dbc8;background:#fbfffc}.daily-task-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;font-size:16px;font-weight:900}.daily-task-card.missing .daily-task-icon{background:#fff0dd;color:#b54708}.daily-task-card.done .daily-task-icon{background:#dcf5e5;color:#087443}.daily-task-card small,.daily-task-card strong,.daily-task-card p{display:block}.daily-task-card small{color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.07em}.daily-task-card strong{margin-top:3px;color:var(--navy-900);font-size:14px}.daily-task-card p{margin:4px 0 0;color:var(--muted);font-size:10px;line-height:1.45}.daily-task-card>b{color:#758579;font-size:18px}
 .staff-attendance-alert{margin:18px 0;width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:18px 20px;border-radius:18px;text-align:left}.staff-attendance-alert.has-missing{border:1px solid #efb0a8;background:linear-gradient(135deg,#fff8f7,#fff2f0);cursor:pointer;box-shadow:0 10px 26px rgba(96,35,25,.07)}.staff-attendance-alert.has-missing:hover{border-color:#df8174;transform:translateY(-1px)}.staff-attendance-alert.all-complete{border:1px solid #b8dec8;background:linear-gradient(135deg,#f6fcf8,#edf9f2)}.staff-alert-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;font-size:20px;font-weight:950}.has-missing .staff-alert-icon{background:#fee4e2;color:#b42318}.all-complete .staff-alert-icon{background:#d9f2e3;color:#087443}.staff-alert-copy strong{display:block;margin-top:4px;color:var(--navy-900);font-size:16px}.staff-attendance-alert h3{margin:4px 0 3px;color:var(--navy-900)}.staff-attendance-alert p{margin:4px 0 0;color:var(--muted);font-size:11px}.staff-alert-open{color:#9c2f24;font-size:11px;font-weight:900;white-space:nowrap}.missing-attendance-modal-head{margin-bottom:14px}.missing-attendance-modal-head p{margin:8px 0 0;color:var(--muted);line-height:1.5}.missing-attendance-table td small{display:block;margin-top:3px;color:var(--muted);font-size:9px}
 @media(max-width:760px){.daily-compliance-heading{flex-direction:column}.daily-task-grid{grid-template-columns:1fr}.staff-attendance-alert{grid-template-columns:auto 1fr}.staff-alert-open{grid-column:2}.missing-attendance-table{min-width:720px}}
+
+
+/* =========================================================
+   v6.31 — DASHBOARD FOREST THEME
+   Visual-only enhancement: tidak mengubah fungsi/data.
+   ========================================================= */
+
+.app-shell.dashboard-theme .main-area {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(246,250,247,.90), rgba(240,247,243,.97)),
+    url('/assets/forest-logo-bg.jpg') center top / cover fixed no-repeat;
+}
+
+.app-shell.dashboard-theme .main-area::before {
+  content: "";
+  position: fixed;
+  inset: 96px 0 0 286px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 88% 16%, rgba(255,255,255,.82), transparent 22rem),
+    linear-gradient(90deg, rgba(246,250,247,.98) 0%, rgba(246,250,247,.80) 55%, rgba(224,241,231,.48) 100%);
+}
+
+.app-shell.dashboard-theme .topbar {
+  background: rgba(255,255,255,.78);
+  border-bottom-color: rgba(190,214,201,.75);
+}
+
+.app-shell.dashboard-theme .content {
+  position: relative;
+}
+
+.app-shell.dashboard-theme .welcome-hero {
+  min-height: 330px;
+  background:
+    linear-gradient(90deg, rgba(4,42,29,.94) 0%, rgba(7,63,43,.82) 44%, rgba(7,63,43,.48) 76%, rgba(7,63,43,.34) 100%),
+    url('/assets/forest-logo-bg.jpg') center / cover no-repeat;
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 22px 50px rgba(16,74,54,.20);
+}
+
+.app-shell.dashboard-theme .welcome-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255,255,255,.15), transparent 10rem),
+    linear-gradient(180deg, transparent 45%, rgba(0,0,0,.18));
+  pointer-events: none;
+}
+
+.app-shell.dashboard-theme .welcome-hero::after {
+  width: 430px;
+  height: 430px;
+  right: -185px;
+  bottom: -220px;
+  border-color: rgba(255,255,255,.18);
+}
+
+.app-shell.dashboard-theme .hero-copy h2 {
+  text-shadow: 0 3px 18px rgba(0,0,0,.22);
+}
+
+.app-shell.dashboard-theme .hero-copy p {
+  color: rgba(255,255,255,.86);
+  max-width: 720px;
+}
+
+.app-shell.dashboard-theme .hero-visual img {
+  width: 152px;
+  height: 152px;
+  border-radius: 32px;
+  box-shadow: 0 22px 48px rgba(0,0,0,.28);
+}
+
+.app-shell.dashboard-theme .hero-visual span {
+  color: rgba(255,255,255,.92);
+  text-shadow: 0 2px 10px rgba(0,0,0,.28);
+}
+
+.app-shell.dashboard-theme .metric-grid {
+  position: relative;
+}
+
+.app-shell.dashboard-theme .metric-card {
+  background: rgba(255,255,255,.91);
+  border-color: rgba(194,217,202,.90);
+  box-shadow: 0 12px 30px rgba(25,82,58,.10);
+  backdrop-filter: blur(10px);
+}
+
+.app-shell.dashboard-theme .metric-card:hover {
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 18px 38px rgba(25,82,58,.16);
+}
+
+.app-shell.dashboard-theme .dashboard-layout .card {
+  background: rgba(255,255,255,.92);
+  border-color: rgba(194,217,202,.88);
+  box-shadow: 0 12px 30px rgba(25,82,58,.09);
+  backdrop-filter: blur(10px);
+}
+
+/* Small forest label above the dashboard cards */
+.app-shell.dashboard-theme .metric-grid::before {
+  content: "RINGKASAN KEGIATAN PKL";
+  position: absolute;
+  left: 4px;
+  top: -10px;
+  transform: translateY(-100%);
+  color: var(--forest-700);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+@media (max-width: 980px) {
+  .app-shell.dashboard-theme .main-area::before {
+    inset-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell.dashboard-theme .main-area {
+    background:
+      linear-gradient(180deg, rgba(246,250,247,.96), rgba(240,247,243,.98)),
+      url('/assets/forest-logo-bg.jpg') center top / auto 420px no-repeat;
+  }
+
+  .app-shell.dashboard-theme .main-area::before {
+    display: none;
+  }
+
+  .app-shell.dashboard-theme .welcome-hero {
+    min-height: 360px;
+    background-position: center;
+  }
+
+  .app-shell.dashboard-theme .hero-visual {
+    display: none;
+  }
+
+  .app-shell.dashboard-theme .metric-grid::before {
+    position: static;
+    display: block;
+    grid-column: 1 / -1;
+    transform: none;
+    margin-bottom: -6px;
+  }
+}

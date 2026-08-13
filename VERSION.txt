@@ -1,6 +1,8 @@
 E-Jurnal PKL Rimba Bahari
-Versi arsip lengkap: 6.30
-Tanggal paket: 12 Agustus 2026
+Versi arsip lengkap: 6.31
+Tanggal paket: 13 Agustus 2026
 Pembaruan notifikasi harian: Administrator dan Guru Pembimbing menerima notifikasi dashboard jika siswa aktif dalam periode PKL belum mengisi presensi pada hari berjalan. Notifikasi dapat diklik untuk menampilkan daftar nama siswa, NISN, kelas, lokasi PKL, dan guru pembimbing untuk Administrator. Siswa menerima peringatan terpisah apabila presensi atau jurnal hari ini belum diisi, lengkap dengan tombol menuju Presensi Saya dan Jurnal Harian. Badge menu ikut menandai kewajiban yang belum selesai.
 Catatan pemantauan: daftar belum presensi hanya menghitung siswa aktif yang tanggal hari ini berada dalam rentang tanggal mulai dan selesai PKL. Jika tanggal mulai/selesai belum diisi, siswa tetap dianggap aktif.
 Catatan database: tidak ada SQL baru untuk v6.30. Tetap gunakan database v6.28/v6.29 yang sudah aktif.
+
+Pembaruan v6.31: dashboard utama menggunakan tema kehutanan dengan background hutan/pegunungan, overlay hijau, kartu semi-transparan, dan tampilan responsif. Tidak ada perubahan database atau fungsi aplikasi.
