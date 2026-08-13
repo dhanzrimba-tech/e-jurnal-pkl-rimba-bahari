@@ -1,8 +1,8 @@
-# E-Jurnal PKL Rimba Bahari v6.31
+# E-Jurnal PKL Rimba Bahari v6.30
 
-Versi 6.31 menambahkan monitoring kewajiban harian tanpa mengubah struktur database. Fitur laporan akademik v6.29 tetap dipertahankan.
+Versi 6.30 menambahkan monitoring kewajiban harian tanpa mengubah struktur database. Fitur laporan akademik v6.29 tetap dipertahankan.
 
-## Notifikasi kewajiban harian v6.31
+## Notifikasi kewajiban harian v6.30
 
 - Administrator menerima notifikasi jumlah siswa aktif PKL yang belum presensi pada tanggal hari ini.
 - Guru Pembimbing menerima notifikasi khusus siswa yang ditugaskan kepadanya dan belum presensi.
@@ -18,17 +18,16 @@ Versi 6.31 menambahkan monitoring kewajiban harian tanpa mengubah struktur datab
 
 - BAB III berganti nama menjadi **Pembahasan Praktik Kerja Lapangan**.
 - Isi BAB III tidak lagi berupa tabel rekap yang diulang dengan daftar pengetahuan, kendala, refleksi, dan catatan pembimbing.
-- BAB III tidak lagi memasukkan semua jurnal. Materi yang sama atau sangat mirip dikelompokkan, lalu sistem memilih jurnal dengan isi paling lengkap sebagai representasi. Laporan individu menampilkan maksimal 5 materi utama dan laporan kelompok maksimal 6 materi utama.
+- Setiap jurnal berstatus **Disetujui** diringkas dan diuraikan per kegiatan berdasarkan tanggal, uraian, tahapan, pengetahuan/keterampilan, kendala, dan refleksi siswa.
 - Catatan pembimbing **tidak ditampilkan di BAB III**. Catatan tersebut tetap tersedia pada Lampiran Rekap Jurnal.
-- Setiap jurnal yang terpilih untuk BAB III menggunakan **maksimal 1 foto**, yaitu foto pertama dari jurnal tersebut.
-- Foto ditempatkan langsung pada pembahasan kegiatan terpilih di BAB III; seluruh jurnal disetujui tetap tersimpan di lampiran.
+- Setiap jurnal menggunakan **maksimal 1 foto**, yaitu foto pertama dari jurnal tersebut.
+- Foto ditempatkan langsung pada pembahasan kegiatan di BAB III.
 - Setiap foto mendapat nomor dan nama, misalnya **Gambar 3.1. Dokumentasi ...**.
 - Sistem membuat **Daftar Gambar** otomatis dari foto yang benar-benar digunakan.
 - BAB Dokumentasi dihapus. Penutup yang sebelumnya BAB V menjadi **BAB IV Penutup**.
 - Ditambahkan **Daftar Pustaka** sebelum lampiran.
 - Setiap pembahasan kegiatan mendapat sitasi ilmiah yang dipilih berdasarkan kata kunci jurnal. Daftar Pustaka hanya memuat sumber yang benar-benar digunakan pada pembahasan.
-- Berlaku pada laporan **individu dan kelompok**, baik **Pratinjau/Cetak PDF** maupun **Unduh Word (.docx)**.
-- Ekspor Word sekarang menghasilkan **DOCX native**, dengan halaman A4, margin akademik, Times New Roman, heading, tabel, foto, caption, page break, dan nomor halaman yang lebih stabil.
+- Berlaku pada laporan **individu dan kelompok**, baik **Pratinjau/Cetak PDF** maupun **Unduh Word (.doc)**.
 
 ## Pustaka ilmiah bawaan untuk pencocokan kegiatan
 
@@ -43,23 +42,21 @@ Versi 6.31 menambahkan monitoring kewajiban harian tanpa mengubah struktur datab
 
 Pencocokan sumber bersifat otomatis berbasis kata kunci. Guru Pembimbing tetap perlu memeriksa apakah sitasi yang dipilih sesuai dengan konteks kegiatan siswa sebelum laporan disetujui.
 
-## Upgrade ke v6.31
+## Upgrade dari v6.29
 
 Tidak ada perubahan database dan tidak perlu menjalankan SQL baru.
 
-Timpa/unggah seluruh source v6.31 agar komponen baru ikut terpasang. File penting yang berubah antara lain:
+Timpa file berikut di GitHub:
 
 - `app.js`
-- `word-export.js`
-- `vendor/jszip.min.js`
+- `styles.css`
 - `index.html`
 - `sw.js`
-- `vercel.json`
-- `api/register-public-student.js`
-- `api/_supabase.js`
 - `package.json`
 - `VERSION.txt`
 - `README.md`
+
+`config.js`, `vercel.json`, folder `api`, `assets`, dan `database` tidak perlu diubah.
 
 Setelah commit, tunggu Vercel berstatus **Ready**, lalu buka aplikasi dan tekan `Ctrl + F5`.
 
@@ -68,9 +65,9 @@ Setelah commit, tunggu Vercel berstatus **Ready**, lalu buka aplikasi dan tekan 
 1. Pilih satu siswa yang memiliki beberapa jurnal Disetujui dan setiap jurnal memiliki lebih dari satu foto.
 2. Buka Laporan PKL dan pilih Pratinjau.
 3. Pastikan BAB III hanya muncul satu kali.
-4. Pastikan jurnal dengan materi sama tidak diulang di BAB III dan hanya jurnal terbaik yang dipakai sebagai representasi.
+4. Pastikan tiap jurnal dibahas secara ringkas dan hanya memakai satu foto.
 5. Cocokkan nomor Gambar pada BAB III dengan Daftar Gambar.
 6. Pastikan BAB IV adalah Penutup dan tidak ada BAB Dokumentasi.
 7. Pastikan Catatan Pembimbing tidak muncul di BAB III.
 8. Pastikan sitasi di BAB III memiliki pasangan yang sama pada Daftar Pustaka.
-9. Ulangi pengujian pada Laporan Kelompok dan pastikan Unduh Word menghasilkan file `.docx` yang rapi.
+9. Ulangi pengujian pada Laporan Kelompok dan Unduh Word.

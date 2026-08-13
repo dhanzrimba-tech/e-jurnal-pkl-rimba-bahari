@@ -1,19 +1,13 @@
-const CACHE = 'ejurnal-rbs-v38-stability-word-report';
+const CACHE = 'ejurnal-rbs-v37-daily-compliance-alerts';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=38',
-  '/app.js?v=38',
-  '/word-export.js?v=38',
-  '/vendor/jszip.min.js?v=38',
-  '/config.js?v=38',
+  '/styles.css?v=37',
+  '/app.js?v=37',
+  '/config.js?v=37',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
-  '/assets/logo-sekolah.svg',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-  'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
-  'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
+  '/assets/logo-sekolah.svg'
 ];
 
 self.addEventListener('install', (event) => {

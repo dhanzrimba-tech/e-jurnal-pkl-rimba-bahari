@@ -10,48 +10,13 @@ function cleanText(value, maxLength = 200) {
   return String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
 }
 
-const RATE_WINDOW_MS = 15 * 60 * 1000;
-const RATE_MAX_REQUESTS = 5;
-const registrationBuckets = globalThis.__ejurnalPublicRegistrationBuckets || new Map();
-globalThis.__ejurnalPublicRegistrationBuckets = registrationBuckets;
-
-function clientAddress(req) {
-  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return forwarded || String(req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown').trim();
-}
-
-function allowRegistrationAttempt(req, res) {
-  const now = Date.now();
-  const key = clientAddress(req);
-  const recent = (registrationBuckets.get(key) || []).filter((time) => now - time < RATE_WINDOW_MS);
-  if (recent.length >= RATE_MAX_REQUESTS) {
-    const retrySeconds = Math.max(60, Math.ceil((RATE_WINDOW_MS - (now - recent[0])) / 1000));
-    res.setHeader('Retry-After', String(retrySeconds));
-    sendJson(res, 429, { error: 'Terlalu banyak percobaan pendaftaran. Coba lagi beberapa saat.' });
-    return false;
-  }
-  recent.push(now);
-  registrationBuckets.set(key, recent);
-  if (registrationBuckets.size > 2000) {
-    for (const [bucketKey, times] of registrationBuckets) {
-      if (!times.some((time) => now - time < RATE_WINDOW_MS)) registrationBuckets.delete(bucketKey);
-    }
-  }
-  return true;
-}
-
 export default async function handler(req, res) {
   if (!allowPostOnly(req, res)) return;
-  if (!allowRegistrationAttempt(req, res)) return;
 
   let admin = null;
   let createdUserId = null;
   try {
     const body = parseBody(req);
-    const startedAt = Number(body.form_started_at || 0);
-    if (startedAt && Date.now() - startedAt < 2500) {
-      return sendJson(res, 400, { error: 'Formulir dikirim terlalu cepat. Periksa kembali data lalu coba lagi.' });
-    }
 
     // Honeypot: bot mendapat respons seolah-olah berhasil tanpa membuat akun.
     if (cleanText(body.website, 200)) {

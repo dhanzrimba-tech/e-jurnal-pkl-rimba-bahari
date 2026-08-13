@@ -1198,7 +1198,7 @@ tbody tr:last-child td { border-bottom: 0; }
 @media(max-width:640px){.group-modal-summary{grid-template-columns:1fr}.group-section-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.group-section-stats span{justify-content:center}.group-manager-section .actions{min-width:0}.report-action-buttons{flex-wrap:wrap}}
 
 
-/* ===== v6.31 Notifikasi kewajiban harian ===== */
+/* ===== v6.30 Notifikasi kewajiban harian ===== */
 .daily-compliance-panel{margin:18px 0;padding:20px;border:1px solid #f0c7a7;border-radius:18px;background:linear-gradient(135deg,#fffaf5,#fff7ed);box-shadow:0 10px 26px rgba(70,45,20,.06)}
 .daily-compliance-panel.is-complete{border-color:#b8dec8;background:linear-gradient(135deg,#f7fcf9,#eef9f2)}
 .daily-compliance-panel.is-error{border-color:#f1c7c3;background:#fff8f7}

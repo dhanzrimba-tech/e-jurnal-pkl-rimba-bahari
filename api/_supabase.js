@@ -173,6 +173,5 @@ export function publicError(error) {
     return 'Penyimpanan foto belum siap. Jalankan database/upgrade-photo-registration.sql melalui SQL Editor Supabase.';
   }
 
-  if (Number(error?.statusCode) >= 400 && Number(error?.statusCode) < 500) return message;
-  return 'Terjadi kesalahan pada server. Silakan coba kembali. Jika masalah berlanjut, hubungi administrator.';
+  return message;
 }
