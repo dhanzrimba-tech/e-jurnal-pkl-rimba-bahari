@@ -1,4 +1,4 @@
-# E-Jurnal PKL — Update v6.47
+# E-Jurnal PKL — Update v6.48
 
 Pembaruan ini memfokuskan hasil cetak laporan kelompok pada konsistensi Word/PDF, penomoran halaman, Daftar Isi/Daftar Gambar, dan lembar pengesahan.
 
