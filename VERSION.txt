@@ -9,3 +9,16 @@ Pembaruan:
 - Judul dan subjudul BAB I–IV dimasukkan ke Daftar Isi beserta nomor halaman.
 - Nomor halaman footer ditampilkan pada dokumen Word.
 - Tidak ada perubahan pada database Supabase atau data jurnal siswa.
+
+Pembaruan v6.36:
+- BAB III laporan kelompok menggunakan hierarki 3.2 Materi -> 3.2.1 Submateri -> 3.2.2, dst.
+- Materi berikutnya otomatis menjadi 3.3, 3.4, dan seterusnya; penomoran tidak mengulang.
+- Jurnal dengan materi/submateri sama disatukan menjadi satu narasi sintesis.
+- Daftar Isi Word mengikuti nomor materi dan submateri tersebut.
+- Foto dokumentasi dibuat proporsional, tidak dipaksa tinggi, dan dicegah agar tidak terpotong/menjadi blok abu-abu.
+- Database dan data jurnal siswa tidak dihapus atau diubah.
+
+Pembaruan v6.37:
+- Daftar Isi/Daftar Gambar memakai titik-titik sebagai leader di antara judul dan nomor halaman.
+- Nomor halaman menggunakan PAGEREF Word dan dokumen diberi instruksi UpdateFields agar Word memperbarui nomor halaman otomatis.
+- Nomor halaman tidak lagi tampak seperti kolom kosong pada struktur tabel.
