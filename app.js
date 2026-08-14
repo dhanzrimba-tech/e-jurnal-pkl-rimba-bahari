@@ -4040,6 +4040,60 @@ async function urlToEmbeddedDataUrl(url) {
   }
 }
 
+async function urlToWordPhotoDataUrl(url, maxWidth = 1100, maxHeight = 820, quality = 0.78) {
+  if (!url) return '';
+  try {
+    const response = await fetch(url, { credentials: 'omit' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = objectUrl;
+      });
+      const scale = Math.min(1, maxWidth / img.naturalWidth, maxHeight / img.naturalHeight);
+      const width = Math.max(1, Math.round(img.naturalWidth * scale));
+      const height = Math.max(1, Math.round(img.naturalHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      return canvas.toDataURL('image/jpeg', quality);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch (error) {
+    console.warn('Gagal mengecilkan gambar Word:', error);
+    return await urlToEmbeddedDataUrl(url);
+  }
+}
+
+async function embedWordReportPhotos(photoPaths, signedUrls, progressLabel = 'foto') {
+  const result = {};
+  const queue = [...photoPaths];
+  const workerCount = Math.min(6, queue.length);
+  let completed = 0;
+  async function worker() {
+    while (queue.length) {
+      const path = queue.shift();
+      const signedUrl = signedUrls[path] || '';
+      result[path] = signedUrl ? await urlToWordPhotoDataUrl(signedUrl) : '';
+      completed += 1;
+      if (completed === queue.length + completed || completed % 5 === 0 || completed === photoPaths.length) {
+        toast(`Memproses ${progressLabel}: ${completed}/${photoPaths.length}`, 1800);
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return result;
+}
+
 function wordDocumentationHtml(journals, imageSources) {
   const items = [];
   journals.forEach((journal) => {
@@ -4082,12 +4136,7 @@ async function downloadFinalPklReportWord(studentId) {
     for (let index = 0; index < photoPaths.length; index += batchSize) {
       Object.assign(signedUrls, await signedPhotoUrls(photoPaths.slice(index, index + batchSize)));
     }
-
-    const imageSources = {};
-    for (const path of photoPaths) {
-      const signedUrl = signedUrls[path] || '';
-      imageSources[path] = signedUrl ? (await urlToEmbeddedDataUrl(signedUrl) || signedUrl) : '';
-    }
+    const imageSources = await embedWordReportPhotos(photoPaths, signedUrls, 'foto Word');
     const logoAbsolute = new URL('/assets/logo-sekolah.png', window.location.origin).href;
     const logoSrc = await urlToEmbeddedDataUrl(logoAbsolute) || logoAbsolute;
 
@@ -4147,7 +4196,7 @@ async function downloadFinalPklReportWord(studentId) {
 
   <div class="page-break"><h2>BAB II<br>PROFIL TEMPAT PRAKTIK KERJA LAPANGAN</h2><h3>2.1 Identitas dan Gambaran Umum Instansi</h3><p>${textBlock(report.institution_profile)}</p><h3>2.2 Struktur Organisasi / Posisi Penempatan</h3><p>${textBlock(report.organization_structure, 'Struktur organisasi tidak dicantumkan.')}</p><h3>2.3 Bidang atau Bagian Penempatan Siswa</h3><p>Siswa melaksanakan PKL pada unit/bagian <b>${esc(report.placement_unit || '-')}</b> di ${esc(internshipPlace)}.</p></div>
 
-  <div class="page-break"><h2>BAB III<br>PEMBAHASAN PRAKTIK KERJA LAPANGAN</h2>${reportDiscussionHtml(approved, imageSources, { totalHours }).replace(/<img /g, '<img style="width:160pt;height:auto;max-width:160pt;max-height:120pt;display:block;margin:0 auto;object-fit:contain;" ')}</div>
+  <div class="page-break"><h2>BAB III<br>PEMBAHASAN PRAKTIK KERJA LAPANGAN</h2>${reportDiscussionHtml(approved, imageSources, { totalHours }).replace(/<img /g, '<img style="width:145pt;height:auto;max-width:145pt;max-height:108pt;display:block;margin:0 auto;object-fit:contain;" ')}</div>
 
   
 
@@ -4418,16 +4467,13 @@ async function downloadGroupPklReportWord(groupKey) {
     const { report, members, journals, settings } = context;
     if (!report) return toast('Laporan kelompok belum dibuat.');
 
-    const photoPaths = [...new Set(journals.flatMap((item) => (item.photo_paths || []).filter(Boolean)).filter(Boolean))];
+    // Hanya satu foto terbaik per jurnal, sesuai aturan laporan dan agar Word cepat dibuat.
+    const photoPaths = [...new Set(journals.map((item) => (item.photo_paths || []).filter(Boolean)[0]).filter(Boolean))];
     const signedUrls = {};
     for (let index = 0; index < photoPaths.length; index += 50) {
       Object.assign(signedUrls, await signedPhotoUrls(photoPaths.slice(index, index + 50)));
     }
-    const imageSources = {};
-    for (const path of photoPaths) {
-      const signedUrl = signedUrls[path] || '';
-      imageSources[path] = signedUrl ? (await urlToEmbeddedDataUrl(signedUrl) || signedUrl) : '';
-    }
+    const imageSources = await embedWordReportPhotos(photoPaths, signedUrls, 'foto Word kelompok');
 
     const logoAbsolute = new URL('/assets/logo-sekolah.png', window.location.origin).href;
     const logoSrc = await urlToEmbeddedDataUrl(logoAbsolute) || logoAbsolute;
@@ -4512,7 +4558,7 @@ p{margin:0 0 9pt;text-align:justify;overflow-wrap:break-word;word-wrap:break-wor
 table{border-collapse:collapse;width:100%;margin:9pt 0;table-layout:fixed}.approval-table th,.approval-table td,.member-table th,.member-table td{border:1px solid #333;padding:5pt;vertical-align:top;overflow-wrap:break-word}.member-table th{background:#eee;text-align:center}.signature-table{table-layout:fixed}.signature-table td{width:50%;text-align:center;border:0;padding:6pt 8pt}.signature-space{height:42pt}
 .head-title{text-align:center;font-weight:normal;font-size:9pt}.MsoHeader,.MsoFooter{margin:0;padding:0;border:0;font-family:"Times New Roman",serif}.MsoFooter{font-size:8.5pt}.footer-right{text-align:right}.footer-right .footer-page{margin-left:10pt}.footer-center{text-align:center}.footer-page{white-space:nowrap}
 .toc,.figure-list{width:100%;border-collapse:collapse}.toc td,.figure-list td{padding:5pt 0;vertical-align:bottom;border:0;border-bottom:1px dotted #777}.toc-label,.figure-label{white-space:nowrap;width:1%}.toc-label.level-1{padding-left:18pt;font-size:11.5pt}.toc-leader{width:auto;overflow:hidden;color:#555;letter-spacing:1.1pt;text-align:left}.toc-page{width:34pt;text-align:right;white-space:nowrap}.word-field{white-space:nowrap}.figure-label{width:78pt}.figure-list .toc-leader{font-size:11pt;line-height:1.35}
-.material-discussion{margin-bottom:10pt}.activity-discussion{margin:0 0 18pt;page-break-inside:auto}.material-discussion-title{font-size:13pt;margin:14pt 0 7pt}.activity-discussion-title{font-size:12pt;margin:12pt 0 6pt}.literature-link{font-size:10.5pt}.discussion-photo{width:100%;margin:12pt auto 16pt;text-align:center;page-break-inside:avoid;break-inside:avoid}.discussion-photo img{display:block;width:auto;height:auto;max-width:2.60in;max-height:1.80in;margin:0 auto;object-fit:contain}.discussion-photo figcaption{font-size:9.5pt;text-align:center;margin-top:5pt}.status-warning{border:2px solid #a40000;color:#a40000;padding:8pt;text-align:center;margin-bottom:15pt}.meta-box{border:1px solid #555;padding:10pt;margin:10pt 0}.journal-item{border-bottom:1px solid #aaa;padding-bottom:9pt;margin-bottom:12pt;page-break-inside:avoid}.journal-item p{font-size:10pt;margin:2pt 0}.bibliography-list{margin-left:18pt}.bibliography-list li{margin-bottom:8pt;text-align:justify}.watermark{font-family:Arial,sans-serif;font-size:68pt;font-weight:bold;color:#d8bcbc;text-align:center;margin-top:220pt;transform:rotate(-28deg)}
+.material-discussion{margin-bottom:10pt}.activity-discussion{margin:0 0 18pt;page-break-inside:auto}.material-discussion-title{font-size:13pt;margin:14pt 0 7pt}.activity-discussion-title{font-size:12pt;margin:12pt 0 6pt}.literature-link{font-size:10.5pt}.discussion-photo{width:100%;margin:12pt auto 16pt;text-align:center;page-break-inside:avoid;break-inside:avoid}.discussion-photo img{display:block;width:auto;height:auto;max-width:2.35in;max-height:1.65in;margin:0 auto;object-fit:contain}.discussion-photo figcaption{font-size:9.5pt;text-align:center;margin-top:5pt}.status-warning{border:2px solid #a40000;color:#a40000;padding:8pt;text-align:center;margin-bottom:15pt}.meta-box{border:1px solid #555;padding:10pt;margin:10pt 0}.journal-item{border-bottom:1px solid #aaa;padding-bottom:9pt;margin-bottom:12pt;page-break-inside:avoid}.journal-item p{font-size:10pt;margin:2pt 0}.bibliography-list{margin-left:18pt}.bibliography-list li{margin-bottom:8pt;text-align:justify}.watermark{font-family:Arial,sans-serif;font-size:68pt;font-weight:bold;color:#d8bcbc;text-align:center;margin-top:220pt;transform:rotate(-28deg)}
 </style></head>
 <body>
 <table id="hrdftrtbl" border="0" cellspacing="0" cellpadding="0" style="margin-left:900in;width:1px;height:1px;overflow:hidden"><tr><td>
