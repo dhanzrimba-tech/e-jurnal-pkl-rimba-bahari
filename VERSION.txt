@@ -22,3 +22,5 @@ Pembaruan v6.37:
 - Daftar Isi/Daftar Gambar memakai titik-titik sebagai leader di antara judul dan nomor halaman.
 - Nomor halaman menggunakan PAGEREF Word dan dokumen diberi instruksi UpdateFields agar Word memperbarui nomor halaman otomatis.
 - Nomor halaman tidak lagi tampak seperti kolom kosong pada struktur tabel.
+
+Pembaruan v6.38: Daftar Isi pratinjau/cetak laporan kelompok kini memuat nomor halaman otomatis, leader dots, submateri BAB III, dan hierarki 3.2.1/3.2.2/3.3.1.
