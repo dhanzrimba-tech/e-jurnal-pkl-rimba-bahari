@@ -1,5 +1,5 @@
 E-Jurnal PKL Rimba Bahari
-Versi arsip lengkap: 6.33
+Versi arsip lengkap: 6.34
 Tanggal paket: 13 Agustus 2026
 Pembaruan notifikasi harian: Administrator dan Guru Pembimbing menerima notifikasi dashboard jika siswa aktif dalam periode PKL belum mengisi presensi pada hari berjalan. Notifikasi dapat diklik untuk menampilkan daftar nama siswa, NISN, kelas, lokasi PKL, dan guru pembimbing untuk Administrator. Siswa menerima peringatan terpisah apabila presensi atau jurnal hari ini belum diisi, lengkap dengan tombol menuju Presensi Saya dan Jurnal Harian. Badge menu ikut menandai kewajiban yang belum selesai.
 Catatan pemantauan: daftar belum presensi hanya menghitung siswa aktif yang tanggal hari ini berada dalam rentang tanggal mulai dan selesai PKL. Jika tanggal mulai/selesai belum diisi, siswa tetap dianggap aktif.
@@ -10,3 +10,5 @@ Pembaruan v6.31: dashboard utama menggunakan tema kehutanan dengan background hu
 Pembaruan v6.32: halaman depan/login disesuaikan dengan desain referensi hutan full-screen, showcase kiri, kartu login kanan, logo dengan background kehijauan, dan responsif. Fungsi autentikasi serta database tidak diubah.
 
 Pembaruan v6.33: watermark/logo transparan di tengah halaman depan dihilangkan. Background login menggunakan tema kehutanan saja; logo resmi hanya tampil pada kartu dan elemen branding yang memang diperlukan. Database dan fungsi aplikasi tidak diubah.
+
+Pembaruan v6.34: laporan khusus kelompok pada Bab III menggabungkan jurnal dengan materi yang sama menjadi narasi sintesis berdasarkan seluruh jurnal siswa; foto Bab III dibatasi pada dokumentasi representatif per materi, sementara seluruh jurnal/foto tetap berada di lampiran. Format Daftar Pustaka dinormalisasi ke APA 7 dengan hanging indent. Template Word diperbaiki untuk A4, margin, tabel, pagination, foto, dan pemisahan halaman agar lebih rapi saat dibuka di Microsoft Word.
