@@ -88,3 +88,9 @@ Setelah commit, tunggu Vercel berstatus **Ready**, lalu buka aplikasi dan tekan 
 
 ### v6.46 — Perbaikan Word Laporan Kelompok
 Ekspor Word laporan kelompok diperbarui agar lebih dekat dengan hasil PDF, termasuk leader dots Daftar Isi/Daftar Gambar, bookmark + PAGEREF untuk nomor halaman, header/footer, pemisahan section, dan narasi kelompok menggunakan sudut pandang "kami".
+
+
+## Update v6.50 - Word Foto & Footer
+- Foto dokumentasi pada Word dibatasi sekitar 160 pt x 120 pt agar lebih proporsional.
+- Footer Word menampilkan `Laporan Praktek Kerja Lapangan SMK Kehutanan Rimba Bahari Sumedang` dan nomor halaman otomatis.
+- Cover tidak diberi footer melalui first-footer pada format Word yang mendukungnya.

@@ -1,3 +1,11 @@
+E-Jurnal PKL v6.50 - FIX WORD FOTO + FOOTER
+
+Perbaikan utama:
+- Foto dokumentasi Word diperkecil dan dibatasi proporsional agar tidak memenuhi halaman.
+- Footer Word diperkuat dengan keterangan sekolah dan nomor halaman otomatis.
+- Footer halaman pertama/cover tetap kosong pada format Word yang mendukung first-footer.
+- Format PDF/cetak browser tidak diubah.
+
 E-Jurnal PKL — Versi 6.48
 Pembaruan:
 - Laporan khusus kelompok: BAB III dikelompokkan berdasarkan pokok materi.
