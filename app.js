@@ -3701,38 +3701,81 @@ function journalMaterialSimilarity(a, b) {
   return common / (aa.size + bb.size - common);
 }
 
+function reportMaterialName(journal) {
+  const text = journalResearchText(journal);
+  const title = String(journal?.activity_title || '').trim();
+  const rules = [
+    { name: 'Agroforestry', keys: ['agroforestry', 'agroforestri', 'wanatani'] },
+    { name: 'Inventarisasi Hutan', keys: ['inventarisasi', 'dbh', 'diameter pohon', 'tinggi pohon', 'volume tegakan', 'petak ukur', 'plot ukur', 'pemetaan', 'gis', 'gps'] },
+    { name: 'Persemaian dan Pembibitan', keys: ['persemaian', 'pembibitan', 'bibit', 'benih', 'semai'] },
+    { name: 'Silvikultur', keys: ['silvikultur', 'penanaman', 'pemeliharaan tanaman', 'pemeliharaan tegakan', 'pemupukan'] },
+    { name: 'Pemanenan Hutan', keys: ['pemanenan', 'penebangan', 'chainsaw', 'penyaradan', 'pengangkutan kayu', 'logging'] },
+    { name: 'Perlindungan Hutan', keys: ['perlindungan hutan', 'patroli', 'hama', 'penyakit tanaman', 'kebakaran hutan', 'gangguan hutan'] },
+    { name: 'Pengelolaan Hutan Lestari', keys: ['pengelolaan hutan lestari', 'pengelolaan hutan', 'kph', 'bkph', 'rph', 'perhutani'] },
+    { name: 'Perhutanan Sosial dan Pemberdayaan Masyarakat', keys: ['perhutanan sosial', 'masyarakat', 'kelompok tani', 'lmdh', 'pendampingan', 'pemberdayaan'] },
+    { name: 'Keselamatan dan Kesehatan Kerja (K3)', keys: ['k3', 'keselamatan kerja', 'kesehatan kerja', 'apd', 'alat pelindung', 'risiko kerja'] },
+  ];
+  const found = rules.find((rule) => rule.keys.some((key) => text.includes(key)));
+  return found?.name || compactReportText(title || 'Kegiatan PKL', 90);
+}
+
+function normalizeMaterialSubtopicTitle(title, material) {
+  let clean = compactReportText(title || 'Kegiatan PKL', 120).trim();
+  clean = clean.replace(/^(kegiatan|praktik|praktikum|materi)\s*[:\-]?\s*/i, '');
+  if (!clean) clean = `Pelaksanaan ${material}`;
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
 function groupJournalsByMaterial(journals) {
   const groups = [];
   (journals || []).forEach((journal) => {
-    const title = String(journal.activity_title || '').trim().toLocaleLowerCase('id-ID');
-    const reference = researchReferenceForJournal(journal);
-    let target = null;
-    let bestScore = 0;
-
-    groups.forEach((group) => {
-      const representative = group.items[0];
-      const repTitle = String(representative.activity_title || '').trim().toLocaleLowerCase('id-ID');
-      const sameTitle = title && repTitle && (title === repTitle || title.includes(repTitle) || repTitle.includes(title));
-      const similarity = journalMaterialSimilarity(journal, representative);
-      const sameReference = reference?.id && group.reference?.id === reference.id && reference.id !== 'pkl-general';
-      const score = sameTitle ? 1 : Math.max(similarity, sameReference ? similarity + 0.12 : 0);
-      if (score > bestScore && (sameTitle || similarity >= 0.38 || (sameReference && similarity >= 0.24))) {
-        bestScore = score;
-        target = group;
-      }
-    });
-
+    const material = reportMaterialName(journal);
+    let target = groups.find((group) => group.name.toLocaleLowerCase('id-ID') === material.toLocaleLowerCase('id-ID'));
     if (!target) {
       target = {
-        key: `${reference?.id || 'general'}-${groups.length}`,
-        reference,
+        key: `${material.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${groups.length}`,
+        name: material,
+        reference: researchReferenceForJournal(journal),
         items: [],
+        subgroups: [],
       };
       groups.push(target);
     }
     target.items.push(journal);
+
+    const title = normalizeMaterialSubtopicTitle(journal.activity_title, material);
+    let subgroup = target.subgroups.find((item) => {
+      const a = item.title.toLocaleLowerCase('id-ID');
+      const b = title.toLocaleLowerCase('id-ID');
+      return a === b || journalMaterialSimilarity(item.items[0], journal) >= 0.42;
+    });
+    if (!subgroup) {
+      subgroup = { title, items: [] };
+      target.subgroups.push(subgroup);
+    }
+    subgroup.items.push(journal);
   });
   return groups;
+}
+
+function groupReportFigureItems(journals) {
+  const groups = groupJournalsByMaterial(journals);
+  let sequence = 0;
+  const figures = [];
+  groups.forEach((materialGroup) => {
+    materialGroup.subgroups.forEach((subgroup) => {
+      const first = subgroup.items[0];
+      const path = (first?.photo_paths || []).filter(Boolean)[0] || '';
+      if (!path) return;
+      sequence += 1;
+      figures.push({
+        path,
+        number: `3.${sequence}`,
+        caption: `Dokumentasi ${compactReportText(subgroup.title || 'Kegiatan PKL', 110)} berdasarkan rekap jurnal kelompok`,
+      });
+    });
+  });
+  return figures;
 }
 
 function mergedUniqueText(items, field, limit = 8) {
@@ -3795,24 +3838,42 @@ function reportDiscussionHtml(journals, imageSources, { group = false, membersCo
   if (!journals.length) return '<h3 class="subchapter">3.1 Ringkasan Hasil Praktik Kerja Lapangan</h3><p>Belum ada jurnal berstatus Disetujui yang dapat dibahas.</p>';
 
   if (group) {
-    const groups = groupJournalsByMaterial(journals);
-    const figures = [];
-    groups.forEach((group, index) => {
-      const representativeIndex = journals.indexOf(group.items[0]);
-      const path = (group.items[0].photo_paths || []).filter(Boolean)[0] || '';
-      if (path) {
-        figures.push({
-          groupIndex: index,
-          path,
-          number: `3.${index + 1}`,
-          caption: `Dokumentasi ${compactReportText(group.items[0].activity_title || 'Kegiatan PKL', 110)} berdasarkan rekap jurnal kelompok`,
-        });
-      }
+    const materialGroups = groupJournalsByMaterial(journals);
+    let figureSequence = 0;
+    const figureByJournal = new Map();
+    materialGroups.forEach((materialGroup) => {
+      materialGroup.subgroups.forEach((subgroup) => {
+        const representative = subgroup.items[0];
+        const path = (representative.photo_paths || []).filter(Boolean)[0] || '';
+        if (path) {
+          figureSequence += 1;
+          figureByJournal.set(representative, {
+            path,
+            number: `3.${figureSequence}`,
+            caption: `Dokumentasi ${compactReportText(subgroup.title, 110)} berdasarkan rekap jurnal kelompok`,
+          });
+        }
+      });
     });
-    const figureMap = new Map(figures.map((figure) => [figure.groupIndex, figure]));
-    const materialNames = groups.map((group) => compactReportText(group.items[0].activity_title || 'Kegiatan PKL', 100));
-    const summary = `<h3 class="subchapter">3.1 Ringkasan Hasil Praktik Kerja Lapangan</h3><p>Berdasarkan rekapitulasi ${journals.length} jurnal yang telah disetujui dari ${membersCount} anggota kelompok, kegiatan PKL dikelompokkan menjadi ${groups.length} materi/kegiatan utama. Jurnal yang membahas materi yang sama tidak ditulis berulang, tetapi digabungkan menjadi satu narasi agar pembahasan lebih sistematis. Materi/kegiatan yang terdokumentasi meliputi ${esc(materialNames.join(', '))}. Total waktu kerja yang tercatat adalah ${totalHours} jam.</p><h3 class="subchapter">3.2 Pembahasan Kegiatan Berdasarkan Rekap Jurnal Siswa</h3>`;
-    const details = groups.map((group, index) => groupDiscussionNarrative(group, index, imageSources, figureMap.get(index))).join('');
+
+    const materialNames = materialGroups.map((group) => group.name);
+    const summary = `<h3 class="subchapter">3.1 Ringkasan Hasil Praktik Kerja Lapangan</h3><p>Berdasarkan rekapitulasi ${journals.length} jurnal yang telah disetujui dari ${membersCount} anggota kelompok, kegiatan PKL dikelompokkan berdasarkan pokok materi. Jurnal siswa yang membahas materi yang sama disatukan, kemudian setiap pokok materi diuraikan ke dalam submateri berdasarkan kegiatan yang tercatat pada jurnal. Materi yang terdokumentasi meliputi ${esc(materialNames.join(', '))}. Total waktu kerja yang tercatat adalah ${totalHours} jam.</p><h3 class="subchapter">3.2 Pembahasan Berdasarkan Pokok Materi</h3>`;
+
+    let materialIndex = 0;
+    const details = materialGroups.map((materialGroup) => {
+      materialIndex += 1;
+      const materialNumber = `3.2.${materialIndex}`;
+      const materialIntro = materialGroup.items.length > 1
+        ? `Pokok materi ${materialGroup.name} dirangkum dari ${materialGroup.items.length} jurnal siswa yang memiliki keterkaitan kegiatan. `
+        : `Pokok materi ${materialGroup.name} dirangkum dari jurnal kegiatan siswa. `;
+      const subtopics = materialGroup.subgroups.map((subgroup, subIndex) => {
+        const first = subgroup.items[0];
+        const figure = figureByJournal.get(first);
+        const localGroup = { ...subgroup, reference: researchReferenceForJournal(first) };
+        return groupDiscussionNarrative(localGroup, subIndex, imageSources, figure, { materialNumber, subtopicNumber: subIndex + 1, titleOverride: subgroup.title });
+      }).join('');
+      return `<section class="material-discussion"><h3 class="material-discussion-title">${materialNumber} ${esc(materialGroup.name)}</h3><p>${esc(materialIntro)}Uraian pada submateri berikut menggabungkan informasi yang sejenis agar pembahasan tidak berulang dan tetap mencerminkan pengalaman praktik seluruh anggota kelompok.</p>${subtopics}</section>`;
+    }).join('');
     return `${summary}${details}`;
   }
 
@@ -3843,6 +3904,7 @@ function reportDiscussionHtml(journals, imageSources, { group = false, membersCo
   }).join('');
   return `${summary}${details}`;
 }
+
 
 
 async function printFinalPklReport(studentId, { autoPrint = false } = {}) {
@@ -4133,7 +4195,7 @@ async function printGroupPklReport(groupKey, { autoPrint = false } = {}) {
     const supervisorNotes = uniqueTextValues(journals, 'supervisor_note');
     const period = groupReportPeriodText(members);
     const totalHours = journals.reduce((sum,item)=>sum+(Number(item.work_hours)||0),0);
-    const reportFigures = reportFigureItems(journals, { group: true });
+    const reportFigures = groupReportFigureItems(journals);
     const reportReferences = referencesUsedByJournals(journals);
     const reviewWatermark = report.status === 'approved' ? '' : `<div class="watermark">${esc(finalReportStatusMeta(report.status)[0].toUpperCase())}</div>`;
     const logoUrl = `${location.origin}/assets/logo-sekolah.png`;
@@ -4186,6 +4248,62 @@ function wordGroupDocumentationHtml(journals, imageSources) {
   return `<table class="photo-table">${rows.join('')}</table>`;
 }
 
+function wordField(code, fallback = '1') {
+  return `<span style='mso-field-code:" ${code} "'>${fallback}</span>`;
+}
+
+function wordBookmark(name) {
+  return `<a name="${name}"></a>`;
+}
+
+function wordTocRow(label, bookmark, level = 0) {
+  const indent = level ? `padding-left:${level * 16}pt;` : '';
+  return `<tr><td style="${indent}">${esc(label)}</td><td style="text-align:right;width:42pt">${wordField(`PAGEREF ${bookmark} \\h`, '1')}</td></tr>`;
+}
+
+function wordFigureTocRows(figures) {
+  if (!figures.length) return '<tr><td>Belum ada gambar</td><td></td></tr>';
+  return figures.map((figure, index) => wordTocRow(`Gambar ${figure.number}. ${figure.caption}`, `_Fig_${index + 1}`, 0)).join('');
+}
+
+function addWordReportBookmarks(html) {
+  let sectionIndex = 0;
+  html = html.replace(/<h3 class="material-discussion-title">/g, () => `${wordBookmark(`_Sec_${++sectionIndex}`)}<h3 class="material-discussion-title">`);
+  let subIndex = 0;
+  html = html.replace(/<h4 class="activity-discussion-title">/g, () => `${wordBookmark(`_Sub_${++subIndex}`)}<h4 class="activity-discussion-title">`);
+  let figureIndex = 0;
+  html = html.replace(/<figure class="discussion-photo">/g, () => `${wordBookmark(`_Fig_${++figureIndex}`)}<figure class="discussion-photo">`);
+  return { html, sectionCount: sectionIndex, subCount: subIndex, figureCount: figureIndex };
+}
+
+function wordFrontTocRows() {
+  return [
+    wordTocRow('LEMBAR PENGESAHAN', '_Pengesahan'),
+    wordTocRow('KATA PENGANTAR', '_KataPengantar'),
+    wordTocRow('DAFTAR ISI', '_DaftarIsi'),
+    wordTocRow('DAFTAR GAMBAR', '_DaftarGambar'),
+    wordTocRow('BAB I PENDAHULUAN', '_Bab1'),
+    wordTocRow('1.1 Latar Belakang', '_Bab1_1', 1),
+    wordTocRow('1.2 Tujuan PKL', '_Bab1_2', 1),
+    wordTocRow('1.3 Manfaat PKL', '_Bab1_3', 1),
+    wordTocRow('1.4 Waktu dan Tempat Pelaksanaan', '_Bab1_4', 1),
+    wordTocRow('BAB II PROFIL TEMPAT PRAKTIK KERJA LAPANGAN', '_Bab2'),
+    wordTocRow('2.1 Identitas dan Gambaran Umum Instansi', '_Bab2_1', 1),
+    wordTocRow('2.2 Struktur Organisasi / Posisi Penempatan', '_Bab2_2', 1),
+    wordTocRow('2.3 Bidang atau Bagian Penempatan Kelompok', '_Bab2_3', 1),
+    wordTocRow('BAB III PEMBAHASAN PRAKTIK KERJA LAPANGAN', '_Bab3'),
+    wordTocRow('BAB IV PENUTUP', '_Bab4'),
+    wordTocRow('4.1 Kesimpulan', '_Bab4_1', 1),
+    wordTocRow('4.2 Saran', '_Bab4_2', 1),
+    wordTocRow('4.2.1 Untuk Sekolah', '_Bab4_2a', 2),
+    wordTocRow('4.2.2 Untuk Tempat PKL', '_Bab4_2b', 2),
+    wordTocRow('4.2.3 Untuk Siswa', '_Bab4_2c', 2),
+    wordTocRow('DAFTAR PUSTAKA', '_DaftarPustaka'),
+    wordTocRow('LAMPIRAN', '_Lampiran'),
+  ].join('');
+}
+
+
 async function downloadGroupPklReportWord(groupKey) {
   toast('Menyiapkan dokumen Word laporan kelompok beserta foto...', 5000);
   try {
@@ -4217,23 +4335,36 @@ async function downloadGroupPklReportWord(groupKey) {
     const statusLabel = finalReportStatusMeta(report.status)[0];
     const statusNotice = report.status === 'approved' ? '' : `<p class="status-warning"><b>STATUS: ${esc(statusLabel.toUpperCase())}</b> · Dokumen kelompok ini belum menjadi laporan final yang disetujui.</p>`;
     const membersRows = members.map((item,index)=>`<tr><td>${index+1}</td><td>${esc(item.full_name || '-')}</td><td>${esc(item.nis || '-')}</td><td>${esc(item.class_name || '-')}</td></tr>`).join('');
+    const discussionPrepared = addWordReportBookmarks(reportDiscussionHtml(journals, imageSources, { group: true, membersCount: members.length, totalHours }));
+    const discussionHtml = discussionPrepared.html;
+    const materialGroups = groupJournalsByMaterial(journals);
+    const tocMaterialRows = materialGroups.map((materialGroup, materialIndex) => {
+      const materialBookmark = `_Sec_${materialIndex + 1}`;
+      const materialRow = wordTocRow(`3.2.${materialIndex + 1} ${materialGroup.name}`, materialBookmark, 0);
+      const subRows = materialGroup.subgroups.map((subgroup, subIndex) => {
+        const globalSubIndex = materialGroups.slice(0, materialIndex).reduce((sum, g) => sum + g.subgroups.length, 0) + subIndex + 1;
+        return wordTocRow(`3.2.${materialIndex + 1}.${subIndex + 1} ${subgroup.title}`, `_Sub_${globalSubIndex}`, 1);
+      }).join('');
+      return materialRow + subRows;
+    }).join('');
+    const tocRows = wordFrontTocRows().replace('</tr>','</tr>') + tocMaterialRows;
 
     const html = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40" lang="id"><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><meta name="Generator" content="E-Jurnal PKL"><title>${esc(title)}</title><style>
-      @page Section1{size:595.3pt 841.9pt;margin:56.7pt 51pt 51pt 51pt}div.Section1{page:Section1}body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.5;color:#111}p{margin:0 0 9pt;text-align:justify}.center{text-align:center}.right{text-align:right}.page-break{page-break-before:always;mso-page-break-before:always;page-break-after:auto;mso-pagination:widow-orphan}h1{font-size:18pt;text-align:center;margin:0 0 18pt}h2{font-size:15pt;text-align:center;margin:0 0 18pt}h3{font-size:12pt;margin:14pt 0 7pt}h4{font-size:12pt;margin:10pt 0 5pt}.cover{text-align:center}.cover-logo{width:105px;height:auto;margin:28pt 0 18pt}.school{margin-top:55pt;font-weight:bold;font-size:13pt}table{border-collapse:collapse;width:100%;margin:9pt 0;table-layout:fixed;mso-table-lspace:0pt;mso-table-rspace:0pt}.approval-table th,.approval-table td,.report-table th,.report-table td,.member-table th,.member-table td{border:1px solid #333;padding:6pt;vertical-align:top;word-wrap:break-word;mso-line-height-rule:exactly}.member-table th,.report-table th{text-align:center;background:#eee}.report-table{font-size:9pt}.signature-table td{width:50%;text-align:center;border:0;padding:10pt 8pt}.signature-space{height:60pt}.toc td{border-bottom:1px dotted #999;padding:5pt 0}ul,ol{margin:5pt 0 9pt 24pt;padding:0}li{margin-bottom:4pt;text-align:justify}.meta-box{border:1px solid #555;padding:10pt;margin:10pt 0}.photo-table{border-collapse:separate;border-spacing:8pt}.photo-cell{width:50%;vertical-align:top;text-align:center;border:1px solid #777;padding:7pt}.word-photo{width:250px;max-height:220px}.word-photo-missing{height:150px;background:#eee;color:#666;text-align:center;padding-top:65px}.photo-caption{text-align:center;font-size:9pt;margin-top:5pt}.journal-item{border-bottom:1px solid #aaa;padding-bottom:9pt;margin-bottom:12pt;page-break-inside:avoid;break-inside:avoid;mso-pagination:keep-with-next}.journal-item p{font-size:10pt;margin:2pt 0}.status-warning{border:2px solid #a40000;color:#a40000;padding:8pt;text-align:center;margin-bottom:15pt}.note{font-size:9pt;color:#555;font-style:italic}.activity-discussion{margin-bottom:18pt;page-break-inside:avoid;break-inside:avoid}.activity-discussion-title{font-size:12pt;margin:12pt 0 6pt}.literature-link{font-size:10.5pt}.discussion-photo{width:82%;margin:12pt auto 16pt;text-align:center;page-break-inside:avoid}.discussion-photo img{width:420px;max-height:390px}.discussion-photo .photo-missing{height:180px;background:#eee;color:#666;text-align:center;padding-top:80px}.discussion-photo figcaption{font-size:9.5pt;text-align:center;margin-top:5pt}.figure-list{width:100%;border-collapse:collapse}.figure-list td{padding:5pt;border-bottom:1px dotted #999;vertical-align:top}.figure-list td:first-child{width:80pt}.bibliography-list{margin-left:24pt;padding-left:0}.bibliography-list li{padding-left:12pt;text-indent:-12pt;page-break-inside:avoid;break-inside:avoid}.bibliography-list li{margin-bottom:8pt;text-align:justify}
+      @page Section1{size:595.3pt 841.9pt;margin:56.7pt 51pt 51pt 51pt;mso-footer:f1} .MsoFooter{text-align:center;font-size:10pt}div.Section1{page:Section1}body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.5;color:#111}p{margin:0 0 9pt;text-align:justify}.center{text-align:center}.right{text-align:right}.page-break{page-break-before:always;mso-page-break-before:always;page-break-after:auto;mso-pagination:widow-orphan}h1{font-size:18pt;text-align:center;margin:0 0 18pt}h2{font-size:15pt;text-align:center;margin:0 0 18pt}h3{font-size:12pt;margin:14pt 0 7pt}h4{font-size:12pt;margin:10pt 0 5pt}.cover{text-align:center}.cover-logo{width:105px;height:auto;margin:28pt 0 18pt}.school{margin-top:55pt;font-weight:bold;font-size:13pt}table{border-collapse:collapse;width:100%;margin:9pt 0;table-layout:fixed;mso-table-lspace:0pt;mso-table-rspace:0pt}.approval-table th,.approval-table td,.report-table th,.report-table td,.member-table th,.member-table td{border:1px solid #333;padding:6pt;vertical-align:top;word-wrap:break-word;mso-line-height-rule:exactly}.member-table th,.report-table th{text-align:center;background:#eee}.report-table{font-size:9pt}.signature-table td{width:50%;text-align:center;border:0;padding:10pt 8pt}.signature-space{height:60pt}.toc td{border-bottom:1px dotted #999;padding:5pt 0}ul,ol{margin:5pt 0 9pt 24pt;padding:0}li{margin-bottom:4pt;text-align:justify}.meta-box{border:1px solid #555;padding:10pt;margin:10pt 0}.photo-table{border-collapse:separate;border-spacing:8pt}.photo-cell{width:50%;vertical-align:top;text-align:center;border:1px solid #777;padding:7pt}.word-photo{width:250px;max-height:220px}.word-photo-missing{height:150px;background:#eee;color:#666;text-align:center;padding-top:65px}.photo-caption{text-align:center;font-size:9pt;margin-top:5pt}.journal-item{border-bottom:1px solid #aaa;padding-bottom:9pt;margin-bottom:12pt;page-break-inside:avoid;break-inside:avoid;mso-pagination:keep-with-next}.journal-item p{font-size:10pt;margin:2pt 0}.status-warning{border:2px solid #a40000;color:#a40000;padding:8pt;text-align:center;margin-bottom:15pt}.note{font-size:9pt;color:#555;font-style:italic}.activity-discussion{margin-bottom:18pt;page-break-inside:avoid;break-inside:avoid}.activity-discussion-title{font-size:12pt;margin:12pt 0 6pt}.literature-link{font-size:10.5pt}.discussion-photo{width:82%;margin:12pt auto 16pt;text-align:center;page-break-inside:avoid}.discussion-photo img{width:420px;max-height:390px}.discussion-photo .photo-missing{height:180px;background:#eee;color:#666;text-align:center;padding-top:80px}.discussion-photo figcaption{font-size:9.5pt;text-align:center;margin-top:5pt}.figure-list{width:100%;border-collapse:collapse}.figure-list td{padding:5pt;border-bottom:1px dotted #999;vertical-align:top}.figure-list td:first-child{width:80pt}.bibliography-list{margin-left:24pt;padding-left:0}.bibliography-list li{padding-left:12pt;text-indent:-12pt;page-break-inside:avoid;break-inside:avoid}.bibliography-list li{margin-bottom:8pt;text-align:justify}
     </style></head><body><div class="Section1">${statusNotice}
       <div class="cover"><h1>${esc(title)}</h1><h2>${esc(internshipPlace)}</h2><img class="cover-logo" src="${esc(logoSrc)}" alt="Logo sekolah"><h3>Disusun oleh Kelompok PKL</h3><table class="member-table"><thead><tr><th>No</th><th>Nama</th><th>NISN</th><th>Kelas</th></tr></thead><tbody>${membersRows}</tbody></table><div class="school">${esc(settings.school_name || DEFAULT_PKL_REPORT_SETTINGS.school_name)}</div><div>Tahun Pelajaran ${esc(settings.school_year || '-')}</div></div>
-      <div class="page-break"><h2>LEMBAR PENGESAHAN</h2><table class="approval-table"><tr><th>Tempat PKL</th><td>${esc(internshipPlace)}</td></tr><tr><th>Unit Penempatan</th><td>${esc(report.placement_unit || '-')}</td></tr><tr><th>Periode</th><td>${esc(groupReportPeriodText(members))}</td></tr><tr><th>Jumlah Anggota</th><td>${members.length} siswa</td></tr><tr><th>Status</th><td>${esc(statusLabel)}</td></tr></table><h3>Anggota Kelompok</h3><table class="member-table"><thead><tr><th>No</th><th>Nama</th><th>NISN</th><th>Kelas</th></tr></thead><tbody>${membersRows}</tbody></table><p class="right">${esc(settings.approval_location || 'Sumedang')}, ${esc(new Intl.DateTimeFormat('id-ID',{dateStyle:'long'}).format(new Date()))}</p><table class="signature-table"><tr><td>Pembimbing Lapangan<div class="signature-space"></div><b>${fieldNames.length ? fieldNames.map(esc).join('<br>') : '________________________'}</b></td><td>Guru Pembimbing<div class="signature-space"></div><b>${teacherNames.length ? teacherNames.map(esc).join('<br>') : '________________________'}</b></td></tr><tr><td>Perwakilan Kelompok<div class="signature-space"></div><b>${esc(members[0]?.full_name || '________________________')}</b></td><td>Kepala Sekolah<div class="signature-space"></div><b>${esc(settings.principal_name || '________________________')}</b>${settings.principal_nip ? `<br>NIP. ${esc(settings.principal_nip)}` : ''}</td></tr></table></div>
-      <div class="page-break"><h2>KATA PENGANTAR</h2><p>${textBlock(report.preface)}</p></div>
-      <div class="page-break"><h2>DAFTAR ISI</h2><table class="toc"><tr><td>LEMBAR PENGESAHAN</td></tr><tr><td>KATA PENGANTAR</td></tr><tr><td>DAFTAR GAMBAR</td></tr><tr><td>BAB I PENDAHULUAN</td></tr><tr><td>BAB II PROFIL TEMPAT PRAKTIK KERJA LAPANGAN</td></tr><tr><td>BAB III PEMBAHASAN PRAKTIK KERJA LAPANGAN</td></tr><tr><td>BAB IV PENUTUP</td></tr><tr><td>DAFTAR PUSTAKA</td></tr><tr><td>LAMPIRAN</td></tr></table></div>
-      <div class="page-break"><h2>DAFTAR GAMBAR</h2>${reportFigureListHtml(reportFigures)}</div>
-      <div class="page-break"><h2>BAB I<br>PENDAHULUAN</h2><h3>1.1 Latar Belakang</h3><p>${textBlock(settings.standard_background)}</p><h3>1.2 Tujuan PKL</h3><p>${textBlock(settings.standard_objectives)}</p><h3>1.3 Manfaat PKL</h3><p>${textBlock(settings.standard_benefits)}</p><h3>1.4 Waktu dan Tempat Pelaksanaan</h3><div class="meta-box"><p><b>Tempat PKL:</b> ${esc(internshipPlace)}</p><p><b>Unit:</b> ${esc(report.placement_unit || '-')}</p><p><b>Periode:</b> ${esc(groupReportPeriodText(members))}</p><p><b>Jumlah anggota:</b> ${members.length} siswa</p></div></div>
-      <div class="page-break"><h2>BAB II<br>PROFIL TEMPAT PRAKTIK KERJA LAPANGAN</h2><h3>2.1 Identitas dan Gambaran Umum Instansi</h3><p>${textBlock(report.institution_profile)}</p><h3>2.2 Struktur Organisasi / Posisi Penempatan</h3><p>${textBlock(report.organization_structure, 'Struktur organisasi tidak dicantumkan.')}</p><h3>2.3 Bidang atau Bagian Penempatan Kelompok</h3><p>Kelompok melaksanakan PKL pada unit/bagian <b>${esc(report.placement_unit || '-')}</b> di ${esc(internshipPlace)}.</p></div>
-      <div class="page-break"><h2>BAB III<br>PEMBAHASAN PRAKTIK KERJA LAPANGAN</h2>${reportDiscussionHtml(journals, imageSources, { group: true, membersCount: members.length, totalHours })}</div>
+      <div class="page-break">${wordBookmark("_Pengesahan")}<h2>LEMBAR PENGESAHAN</h2><table class="approval-table"><tr><th>Tempat PKL</th><td>${esc(internshipPlace)}</td></tr><tr><th>Unit Penempatan</th><td>${esc(report.placement_unit || '-')}</td></tr><tr><th>Periode</th><td>${esc(groupReportPeriodText(members))}</td></tr><tr><th>Jumlah Anggota</th><td>${members.length} siswa</td></tr><tr><th>Status</th><td>${esc(statusLabel)}</td></tr></table><h3>Anggota Kelompok</h3><table class="member-table"><thead><tr><th>No</th><th>Nama</th><th>NISN</th><th>Kelas</th></tr></thead><tbody>${membersRows}</tbody></table><p class="right">${esc(settings.approval_location || 'Sumedang')}, ${esc(new Intl.DateTimeFormat('id-ID',{dateStyle:'long'}).format(new Date()))}</p><table class="signature-table"><tr><td>Pembimbing Lapangan<div class="signature-space"></div><b>${fieldNames.length ? fieldNames.map(esc).join('<br>') : '________________________'}</b></td><td>Guru Pembimbing<div class="signature-space"></div><b>${teacherNames.length ? teacherNames.map(esc).join('<br>') : '________________________'}</b></td></tr><tr><td>Perwakilan Kelompok<div class="signature-space"></div><b>${esc(members[0]?.full_name || '________________________')}</b></td><td>Kepala Sekolah<div class="signature-space"></div><b>${esc(settings.principal_name || '________________________')}</b>${settings.principal_nip ? `<br>NIP. ${esc(settings.principal_nip)}` : ''}</td></tr></table></div>
+      <div class="page-break">${wordBookmark("_KataPengantar")}<h2>KATA PENGANTAR</h2><p>${textBlock(report.preface)}</p></div>
+      <div class="page-break">${wordBookmark("_DaftarIsi")}<h2>DAFTAR ISI</h2><table class="toc">${tocRows}</table><p class="note">Nomor halaman dihasilkan oleh Word berdasarkan posisi judul pada dokumen. Jika ada perubahan isi, klik Ctrl+A lalu F9 di Word untuk memperbarui nomor halaman.</p></div>
+      <div class="page-break">${wordBookmark("_DaftarGambar")}<h2>DAFTAR GAMBAR</h2><table class="toc">${wordFigureTocRows(reportFigures)}</table></div>
+      <div class="page-break">${wordBookmark("_Bab1")}<h2>BAB I<br>PENDAHULUAN</h2>${wordBookmark("_Bab1_1")}<h3>1.1 Latar Belakang</h3><p>${textBlock(settings.standard_background)}</p>${wordBookmark("_Bab1_2")}<h3>1.2 Tujuan PKL</h3><p>${textBlock(settings.standard_objectives)}</p>${wordBookmark("_Bab1_3")}<h3>1.3 Manfaat PKL</h3><p>${textBlock(settings.standard_benefits)}</p>${wordBookmark("_Bab1_4")}<h3>1.4 Waktu dan Tempat Pelaksanaan</h3><div class="meta-box"><p><b>Tempat PKL:</b> ${esc(internshipPlace)}</p><p><b>Unit:</b> ${esc(report.placement_unit || '-')}</p><p><b>Periode:</b> ${esc(groupReportPeriodText(members))}</p><p><b>Jumlah anggota:</b> ${members.length} siswa</p></div></div>
+      <div class="page-break">${wordBookmark("_Bab2")}<h2>BAB II<br>PROFIL TEMPAT PRAKTIK KERJA LAPANGAN</h2>${wordBookmark("_Bab2_1")}<h3>2.1 Identitas dan Gambaran Umum Instansi</h3><p>${textBlock(report.institution_profile)}</p>${wordBookmark("_Bab2_2")}<h3>2.2 Struktur Organisasi / Posisi Penempatan</h3><p>${textBlock(report.organization_structure, 'Struktur organisasi tidak dicantumkan.')}</p>${wordBookmark("_Bab2_3")}<h3>2.3 Bidang atau Bagian Penempatan Kelompok</h3><p>Kelompok melaksanakan PKL pada unit/bagian <b>${esc(report.placement_unit || '-')}</b> di ${esc(internshipPlace)}.</p></div>
+      <div class="page-break">${wordBookmark("_Bab3")}<h2>BAB III<br>PEMBAHASAN PRAKTIK KERJA LAPANGAN</h2>${discussionHtml}</div>
       
-      <div class="page-break"><h2>BAB IV<br>PENUTUP</h2><h3>4.1 Kesimpulan</h3><p>${textBlock(report.conclusion)}</p><h3>4.2 Saran</h3><h4>A. Untuk Sekolah</h4><p>${textBlock(report.suggestions_school)}</p><h4>B. Untuk Tempat PKL</h4><p>${textBlock(report.suggestions_workplace)}</p><h4>C. Untuk Siswa</h4><p>${textBlock(report.suggestions_students)}</p></div>
-      <div class="page-break"><h2>DAFTAR PUSTAKA</h2>${reportBibliographyHtml(reportReferences)}</div>
-      <div class="page-break"><h2>LAMPIRAN 1<br>DAFTAR ANGGOTA DAN REKAP JURNAL</h2><table class="member-table"><thead><tr><th>No</th><th>Nama</th><th>NISN</th><th>Kelas</th></tr></thead><tbody>${membersRows}</tbody></table>${groupJournalAppendixHtml(journals)}</div>
-      
+      <div class="page-break">${wordBookmark("_Bab4")}<h2>BAB IV<br>PENUTUP</h2>${wordBookmark("_Bab4_1")}<h3>4.1 Kesimpulan</h3><p>${textBlock(report.conclusion)}</p>${wordBookmark("_Bab4_2")}<h3>4.2 Saran</h3>${wordBookmark("_Bab4_2a")}<h4>A. Untuk Sekolah</h4><p>${textBlock(report.suggestions_school)}</p>${wordBookmark("_Bab4_2b")}<h4>B. Untuk Tempat PKL</h4><p>${textBlock(report.suggestions_workplace)}</p>${wordBookmark("_Bab4_2c")}<h4>C. Untuk Siswa</h4><p>${textBlock(report.suggestions_students)}</p></div>
+      <div class="page-break">${wordBookmark("_DaftarPustaka")}<h2>DAFTAR PUSTAKA</h2>${reportBibliographyHtml(reportReferences)}</div>
+      <div class="page-break">${wordBookmark("_Lampiran")}<h2>LAMPIRAN 1<br>DAFTAR ANGGOTA DAN REKAP JURNAL</h2><table class="member-table"><thead><tr><th>No</th><th>Nama</th><th>NISN</th><th>Kelas</th></tr></thead><tbody>${membersRows}</tbody></table>${groupJournalAppendixHtml(journals)}</div>
+      <div style="mso-element:footer" id="f1"><p class="MsoFooter">Halaman ${wordField("PAGE", "1")}</p></div>
     </div></body></html>`;
 
     const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' });
