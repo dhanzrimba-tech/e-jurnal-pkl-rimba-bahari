@@ -24,3 +24,12 @@ Pembaruan v6.37:
 - Nomor halaman tidak lagi tampak seperti kolom kosong pada struktur tabel.
 
 Pembaruan v6.38: Daftar Isi pratinjau/cetak laporan kelompok kini memuat nomor halaman otomatis, leader dots, submateri BAB III, dan hierarki 3.2.1/3.2.2/3.3.1.
+
+Pembaruan v6.39:
+- Memperbaiki Daftar Isi pada pratinjau/Cetak laporan kelompok agar nomor halaman benar-benar dihitung setelah seluruh gambar selesai dimuat.
+- Memperbaiki titik-titik (leader dots) agar berada di antara judul dan nomor halaman.
+- Menambahkan nomor halaman pada Daftar Gambar berdasarkan posisi gambar sebenarnya di BAB III.
+- Menambahkan target halaman untuk BAB I, BAB II, BAB III, BAB IV, Daftar Pustaka, Lampiran, serta subbab yang ditampilkan di Daftar Isi.
+- Memperbaiki bug JavaScript v6.38 karena perhitungan halaman masih merujuk variabel materialGroups yang tidak tersedia di jendela pratinjau.
+- Penomoran materi/submateri BAB III tetap menggunakan struktur 3.2, 3.2.1, 3.2.2, 3.3, dan seterusnya.
+- Tidak ada perubahan pada database Supabase atau data jurnal siswa.
