@@ -71,3 +71,7 @@ Setelah commit, tunggu Vercel berstatus **Ready**, lalu buka aplikasi dan tekan 
 7. Pastikan Catatan Pembimbing tidak muncul di BAB III.
 8. Pastikan sitasi di BAB III memiliki pasangan yang sama pada Daftar Pustaka.
 9. Ulangi pengujian pada Laporan Kelompok dan Unduh Word.
+
+
+### v6.46 — Perbaikan Word Laporan Kelompok
+Ekspor Word laporan kelompok diperbarui agar lebih dekat dengan hasil PDF, termasuk leader dots Daftar Isi/Daftar Gambar, bookmark + PAGEREF untuk nomor halaman, header/footer, pemisahan section, dan narasi kelompok menggunakan sudut pandang "kami".

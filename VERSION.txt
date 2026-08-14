@@ -41,3 +41,24 @@ Pembaruan v6.40:
 - Daftar Gambar mempertahankan nomor halaman aktual berdasarkan posisi foto pada BAB III.
 - Format Word menggunakan tiga kolom judul–titik–nomor halaman agar titik tidak menjadi garis penuh dari awal baris.
 - Tidak ada perubahan pada database Supabase atau data jurnal siswa.
+
+Pembaruan v6.44:
+- Perapihan ekspor Word agar tidak menghasilkan halaman kosong akibat page-break ganda.
+- Cover tidak lagi memiliki page-break-after ganda; halaman berikutnya mengendalikan pergantian halaman.
+- Daftar Isi/Daftar Gambar menggunakan kolom leader bertitik yang stabil, bukan 90 karakter titik tetap.
+- Kolom judul, titik, dan nomor halaman dibuat proporsional dan rata kanan.
+- Tabel dan baris dicegah terpotong antarhalaman sejauh didukung Word.
+- Foto dokumentasi dibatasi proporsional dan tidak dipaksa menjadi ukuran yang merusak layout.
+- Footer Word dirapikan dengan keterangan laporan dan nomor halaman di sisi kanan.
+- Struktur data/database tidak diubah.
+
+Pembaruan v6.46:
+- Ekspor Word laporan kelompok disusun ulang agar mengikuti struktur dan tata letak laporan PDF: A4, Times New Roman, margin, judul bab, subbab, tabel, foto, dan jarak paragraf lebih konsisten.
+- Daftar Isi Word menggunakan bookmark + field PAGEREF sehingga nomor halaman mengikuti posisi nyata di Microsoft Word.
+- Daftar Gambar Word menggunakan bookmark + field PAGEREF untuk nomor halaman gambar otomatis.
+- Leader titik Daftar Isi dan Daftar Gambar dibuat sebagai tiga kolom: judul – titik – nomor halaman, sehingga titik berada setelah judul dan nomor halaman rata kanan.
+- Word diberi instruksi UpdateFields agar nomor halaman dan PAGEREF diperbarui saat dokumen dibuka di Microsoft Word.
+- Header/footer Word dirapikan; footer memuat keterangan "Laporan Praktek Kerja Lapangan SMK Kehutanan Rimba Bahari Sumedang" dan nomor halaman.
+- Bagian awal, BAB, dan lampiran dipisahkan sebagai section agar format halaman lebih stabil; lampiran tidak menggunakan nomor halaman pada footer.
+- Narasi laporan kelompok menggunakan sudut pandang "kami" agar terasa sebagai laporan yang ditulis oleh siswa secara berkelompok.
+- Tidak ada perubahan pada database Supabase atau data jurnal siswa.
