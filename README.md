@@ -1,3 +1,16 @@
+# E-Jurnal PKL — Update v6.47
+
+Pembaruan ini memfokuskan hasil cetak laporan kelompok pada konsistensi Word/PDF, penomoran halaman, Daftar Isi/Daftar Gambar, dan lembar pengesahan.
+
+## Aturan cetak
+- Cover: tanpa nomor halaman.
+- Bagian awal: i, ii, iii, iv, ... di bawah tengah.
+- BAB I–IV: angka 1, 2, 3, 4, ...; halaman pertama tiap BAB di bawah tengah, halaman lanjutan di bawah kanan.
+- Footer halaman isi: Laporan Praktek Kerja Lapangan SMK Kehutanan Rimba Bahari Sumedang.
+- Daftar Pustaka: angka Romawi kecil.
+- Lampiran: tanpa nomor halaman.
+- Daftar Isi dan Daftar Gambar memakai field Word sehingga nomor halaman mengikuti pagination saat dibuka di Microsoft Word.
+- Lembar pengesahan dipadatkan agar tanda tangan Kepala Sekolah tetap satu halaman.
 # E-Jurnal PKL Rimba Bahari v6.30
 
 Versi 6.30 menambahkan monitoring kewajiban harian tanpa mengubah struktur database. Fitur laporan akademik v6.29 tetap dipertahankan.

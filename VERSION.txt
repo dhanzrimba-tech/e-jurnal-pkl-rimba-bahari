@@ -1,4 +1,4 @@
-E-Jurnal PKL — Versi 6.35
+E-Jurnal PKL — Versi 6.47
 Pembaruan:
 - Laporan khusus kelompok: BAB III dikelompokkan berdasarkan pokok materi.
 - Materi yang sama disatukan menjadi satu pembahasan.
@@ -62,3 +62,11 @@ Pembaruan v6.46:
 - Bagian awal, BAB, dan lampiran dipisahkan sebagai section agar format halaman lebih stabil; lampiran tidak menggunakan nomor halaman pada footer.
 - Narasi laporan kelompok menggunakan sudut pandang "kami" agar terasa sebagai laporan yang ditulis oleh siswa secara berkelompok.
 - Tidak ada perubahan pada database Supabase atau data jurnal siswa.
+
+Pembaruan v6.47:
+- Word laporan kelompok memakai section Word terpisah untuk cover, bagian awal, BAB I-IV, Daftar Pustaka, dan lampiran.
+- Bagian awal menggunakan angka Romawi kecil; BAB I-IV menggunakan angka Arab; lampiran tanpa nomor halaman.
+- Halaman pertama setiap BAB menampilkan nomor di tengah bawah, halaman berikutnya di kanan bawah.
+- Footer halaman isi memuat keterangan "Laporan Praktek Kerja Lapangan SMK Kehutanan Rimba Bahari Sumedang".
+- Daftar Isi dan Daftar Gambar tetap memakai field PAGEREF agar mengikuti pagination Word.
+- Lembar pengesahan PDF dan Word dipadatkan agar tanda tangan kepala sekolah tetap berada dalam satu halaman.
