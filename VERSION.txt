@@ -1,1 +1,1 @@
-E-Jurnal PKL v6.53 - Vercel Hobby Serverless Function Consolidation + Startup Diagnostic
+E-Jurnal PKL v6.54 - Vercel Hobby Clean API + Startup Diagnostic
