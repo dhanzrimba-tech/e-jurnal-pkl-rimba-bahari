@@ -160,32 +160,136 @@
     </main>
   </div>
 
-  <!-- Supabase loader: gunakan jsDelivr, lalu fallback ke unpkg bila CDN utama gagal. -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Runtime loader v6.52: diagnosis startup + fallback CDN. -->
   <script>
-    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-      document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="/config.js?v=40"></script>
-  <script>
-    window.addEventListener('error', function (event) {
+    window.EJ_STARTUP = { startedAt: Date.now(), supabaseCdn: 'belum_dicoba', errors: [] };
+    window.ejShowStartupError = function (info) {
       const box = document.getElementById('startupError');
-      if (box) {
-        box.hidden = false;
-        box.textContent = 'Aplikasi gagal dimuat: ' + (event.message || 'kesalahan JavaScript');
+      if (!box) return;
+      const title = info.title || 'Aplikasi belum siap';
+      const detail = info.detail || 'Terjadi masalah saat memuat komponen aplikasi.';
+      const steps = info.steps || 'Periksa koneksi internet, lalu tekan Coba Lagi.';
+      box.hidden = false;
+      box.innerHTML = '<strong>⚠️ ' + title + '</strong><div style="margin-top:6px">' + detail + '</div>' +
+        '<div style="margin-top:8px;font-size:13px">' + steps + '</div>' +
+        '<button type="button" id="startupRetry" style="margin-top:12px;padding:9px 14px;border:0;border-radius:8px;cursor:pointer;font-weight:700">Coba Lagi</button>' +
+        '<button type="button" id="startupDetails" style="margin:12px 0 0 8px;padding:9px 14px;border:1px solid currentColor;background:transparent;border-radius:8px;cursor:pointer">Detail Teknis</button>';
+      document.getElementById('startupRetry')?.addEventListener('click', function () {
+        location.href = location.pathname + '?reload=' + Date.now() + location.hash;
+      });
+      document.getElementById('startupDetails')?.addEventListener('click', function () {
+        const details = [
+          'Kode: ' + (info.code || 'STARTUP_ERROR'),
+          'Browser: ' + navigator.userAgent,
+          'Online: ' + (navigator.onLine ? 'YA' : 'TIDAK'),
+          'Supabase: ' + (window.supabase && typeof window.supabase.createClient === 'function' ? 'TERMUAT' : 'TIDAK TERSEDIA'),
+          'Config: ' + (window.APP_CONFIG ? 'TERMUAT' : 'TIDAK TERSEDIA'),
+          'CDN: ' + (window.EJ_STARTUP.supabaseCdn || 'tidak diketahui'),
+          'Waktu: ' + new Date().toLocaleString('id-ID')
+        ].join('\n');
+        alert(details);
+      });
+    };
+    window.addEventListener('error', function (event) {
+      if (event && event.message) {
+        window.EJ_STARTUP.errors.push(event.message);
+        window.ejShowStartupError({
+          code: 'JS_RUNTIME_ERROR',
+          title: 'Aplikasi mengalami error JavaScript',
+          detail: event.message,
+          steps: 'Jika error hanya terjadi di HP tertentu, kirimkan Detail Teknis kepada admin.'
+        });
       }
     });
     window.addEventListener('unhandledrejection', function (event) {
-      const box = document.getElementById('startupError');
-      if (box) {
-        box.hidden = false;
-        box.textContent = 'Aplikasi gagal dimuat: ' + ((event.reason && event.reason.message) || event.reason || 'kesalahan proses');
-      }
+      const message = (event.reason && event.reason.message) || String(event.reason || 'Proses tidak dikenal');
+      window.EJ_STARTUP.errors.push(message);
+      window.ejShowStartupError({
+        code: 'PROMISE_ERROR',
+        title: 'Proses aplikasi gagal',
+        detail: message,
+        steps: 'Periksa internet dan coba lagi. Jika tetap gagal, kirimkan Detail Teknis kepada admin.'
+      });
     });
+
+    function ejLoadScript(src, timeoutMs = 10000) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        let done = false;
+        const timer = setTimeout(() => { done = true; script.remove(); reject(new Error('Timeout memuat ' + src)); }, timeoutMs);
+        script.src = src;
+        script.onload = () => { if (!done) { clearTimeout(timer); done = true; resolve(); } };
+        script.onerror = () => { if (!done) { clearTimeout(timer); done = true; script.remove(); reject(new Error('Gagal memuat ' + src)); } };
+        document.head.appendChild(script);
+      });
+    }
+
+    async function ejBootstrap() {
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+        'https://unpkg.com/@supabase/supabase-js@2'
+      ];
+      for (let i = 0; i < cdns.length; i++) {
+        try {
+          await ejLoadScript(cdns[i]);
+          if (window.supabase && typeof window.supabase.createClient === 'function') {
+            window.EJ_STARTUP.supabaseCdn = i === 0 ? 'jsDelivr' : 'unpkg';
+            break;
+          }
+          throw new Error('File CDN termuat tetapi createClient tidak tersedia.');
+        } catch (error) {
+          window.EJ_STARTUP.errors.push(error.message || String(error));
+          window.EJ_STARTUP.supabaseCdn = i === 0 ? 'jsDelivr gagal' : 'semua CDN gagal';
+        }
+      }
+
+      const other = [
+        'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+        'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+        'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
+      ];
+      for (const src of other) {
+        try { await ejLoadScript(src, 12000); } catch (error) { window.EJ_STARTUP.errors.push(error.message || String(error)); }
+      }
+
+      const config = document.createElement('script');
+      config.src = '/config.js?v=52';
+      config.onload = () => ejLoadApp();
+      config.onerror = () => {
+        window.ejShowStartupError({
+          code: 'CONFIG_LOAD_FAILED',
+          title: 'Konfigurasi aplikasi tidak termuat',
+          detail: 'File config.js tidak berhasil dimuat dari server.',
+          steps: 'Kemungkinan deploy belum lengkap atau cache server/browser masih menggunakan versi lama.'
+        });
+        ejLoadApp();
+      };
+      document.head.appendChild(config);
+    }
+
+    function ejLoadApp() {
+      const app = document.createElement('script');
+      app.src = '/app.js?v=52';
+      app.onload = () => {
+        if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+          window.ejShowStartupError({
+            code: 'SUPABASE_CDN_UNAVAILABLE',
+            title: 'Layanan Supabase tidak berhasil dimuat',
+            detail: 'Library Supabase tidak tersedia di browser ini. Database bukan berarti rusak.',
+            steps: 'Coba ganti jaringan (Wi-Fi/data seluler) atau browser. Jika HP lain normal, kirimkan Detail Teknis kepada admin.'
+          });
+        }
+      };
+      app.onerror = () => window.ejShowStartupError({
+        code: 'APP_JS_LOAD_FAILED',
+        title: 'File aplikasi tidak berhasil dimuat',
+        detail: 'app.js gagal diambil dari server.',
+        steps: 'Kemungkinan cache/service worker atau koneksi ke server bermasalah. Tekan Coba Lagi.'
+      });
+      document.body.appendChild(app);
+    }
+
+    ejBootstrap();
   </script>
   <script>
     (function () {

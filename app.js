@@ -1,9 +1,33 @@
 /* E-Jurnal PKL Rimba Bahari - frontend tanpa proses build */
 const cfg = window.APP_CONFIG || {};
-const hasSupabaseClient = window.supabase && typeof window.supabase.createClient === 'function';
-const sb = (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && hasSupabaseClient)
-  ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
-  : null;
+const hasSupabaseClient = !!(window.supabase && typeof window.supabase.createClient === 'function');
+let sb = null;
+let startupClientError = null;
+
+try {
+  if (!window.APP_CONFIG) {
+    startupClientError = { code: 'CONFIG_MISSING', title: 'Konfigurasi E-Jurnal tidak ditemukan', detail: 'config.js tidak tersedia atau belum selesai dimuat.' };
+  } else if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) {
+    startupClientError = { code: 'CONFIG_INCOMPLETE', title: 'Konfigurasi Supabase belum lengkap', detail: 'SUPABASE_URL atau SUPABASE_ANON_KEY tidak tersedia.' };
+  } else if (!hasSupabaseClient) {
+    startupClientError = { code: 'SUPABASE_CDN_UNAVAILABLE', title: 'Library Supabase tidak termuat', detail: 'Browser tidak mendapatkan library Supabase dari CDN.' };
+  } else {
+    sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  }
+} catch (error) {
+  startupClientError = {
+    code: 'SUPABASE_CLIENT_INIT_FAILED',
+    title: 'Koneksi Supabase gagal dibuat',
+    detail: error?.message || String(error),
+  };
+}
+
+if (startupClientError && typeof window.ejShowStartupError === 'function') {
+  window.ejShowStartupError({
+    ...startupClientError,
+    steps: 'Coba tekan Coba Lagi. Jika tetap terjadi hanya pada HP tertentu, gunakan Detail Teknis dan kirimkan hasilnya kepada admin.'
+  });
+}
 
 const PHOTO_BUCKET = 'journal-photos';
 const MAX_JOURNAL_PHOTOS = 3;
@@ -149,8 +173,13 @@ function userStatusBadge(profile) {
 
 function requireConfig() {
   if (sb) return true;
-  $('#loginForm').insertAdjacentHTML('beforebegin',
-    `<div class="demo-note error-note"><strong>Supabase belum termuat.</strong> Periksa koneksi internet atau akses ke CDN, lalu muat ulang halaman.</div>`);
+  const error = startupClientError || { code: 'SUPABASE_UNAVAILABLE', title: 'Layanan database belum siap', detail: 'Koneksi Supabase belum tersedia.' };
+  if (typeof window.ejShowStartupError === 'function') {
+    window.ejShowStartupError({
+      ...error,
+      steps: 'Periksa internet, coba browser/jaringan lain, lalu tekan Coba Lagi. Jika masih gagal, buka Detail Teknis.'
+    });
+  }
   return false;
 }
 

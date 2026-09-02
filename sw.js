@@ -1,10 +1,10 @@
-const CACHE = 'ejurnal-rbs-v37-daily-compliance-alerts';
+const CACHE = 'ejurnal-rbs-v52-diagnostics';
 const ASSETS = [
   '/',
   '/index.html',
-  '/styles.css?v=37',
-  '/app.js?v=37',
-  '/config.js?v=37',
+  '/styles.css?v=52',
+  '/app.js?v=52',
+  '/config.js?v=52',
   '/manifest.webmanifest',
   '/assets/logo-sekolah.png',
   '/assets/logo-sekolah.svg'
@@ -29,6 +29,8 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  if (event.request.url.includes('/sw.js')) return;
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
