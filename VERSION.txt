@@ -1,3 +1,1 @@
-E-Jurnal PKL Rimba Bahari v6.52 - STARTUP DIAGNOSTIC
-
-Perbaikan: diagnosis error startup, fallback CDN Supabase, retry, detail teknis, cache/service-worker version bump.
+E-Jurnal PKL v6.53 - Vercel Hobby Serverless Function Consolidation + Startup Diagnostic

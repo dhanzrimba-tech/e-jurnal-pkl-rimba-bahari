@@ -1,3 +1,7 @@
+
+## v6.53 Vercel Hobby Fix
+API endpoints are consolidated behind one catch-all Serverless Function to stay below the Vercel Hobby 12-function deployment limit.
+
 # E-Jurnal PKL — Update v6.48
 
 Pembaruan ini memfokuskan hasil cetak laporan kelompok pada konsistensi Word/PDF, penomoran halaman, Daftar Isi/Daftar Gambar, dan lembar pengesahan.
