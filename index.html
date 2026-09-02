@@ -253,7 +253,7 @@
       }
 
       const config = document.createElement('script');
-      config.src = '/config.js?v=52';
+      config.src = '/config.js?v=55';
       config.onload = () => ejLoadApp();
       config.onerror = () => {
         window.ejShowStartupError({
@@ -269,7 +269,7 @@
 
     function ejLoadApp() {
       const app = document.createElement('script');
-      app.src = '/app.js?v=52';
+      app.src = '/app.js?v=55';
       app.onload = () => {
         if (!window.supabase || typeof window.supabase.createClient !== 'function') {
           window.ejShowStartupError({
@@ -316,6 +316,5 @@
       });
     })();
   </script>
-  <script src="/app.js?v=47"></script>
 </body>
 </html>

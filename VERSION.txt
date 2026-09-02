@@ -1,1 +1,1 @@
-E-Jurnal PKL v6.54 - Vercel Hobby Clean API + Startup Diagnostic
+v6.55-DUPLICATE-APP-FIX

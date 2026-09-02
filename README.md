@@ -98,3 +98,7 @@ Ekspor Word laporan kelompok diperbarui agar lebih dekat dengan hasil PDF, terma
 - Foto dokumentasi pada Word dibatasi sekitar 160 pt x 120 pt agar lebih proporsional.
 - Footer Word menampilkan `Laporan Praktek Kerja Lapangan SMK Kehutanan Rimba Bahari Sumedang` dan nomor halaman otomatis.
 - Cover tidak diberi footer melalui first-footer pada format Word yang mendukungnya.
+
+
+## v6.55 FIX
+Perbaikan startup: menghapus pemanggilan `app.js` statis yang duplikat. Loader diagnostik sekarang memuat `app.js` satu kali setelah `config.js`, sehingga error `Identifier 'cfg' has already been declared` tidak terjadi lagi.
