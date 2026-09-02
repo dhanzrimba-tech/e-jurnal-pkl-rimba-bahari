@@ -1,6 +1,7 @@
 /* E-Jurnal PKL Rimba Bahari - frontend tanpa proses build */
 const cfg = window.APP_CONFIG || {};
-const sb = (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY)
+const hasSupabaseClient = window.supabase && typeof window.supabase.createClient === 'function';
+const sb = (cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && hasSupabaseClient)
   ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
   : null;
 
@@ -149,7 +150,7 @@ function userStatusBadge(profile) {
 function requireConfig() {
   if (sb) return true;
   $('#loginForm').insertAdjacentHTML('beforebegin',
-    '<div class="demo-note error-note"><strong>Belum dikonfigurasi.</strong> Isi <code>config.js</code> dengan URL dan publishable key Supabase.</div>');
+    `<div class="demo-note error-note"><strong>Supabase belum termuat.</strong> Periksa koneksi internet atau akses ke CDN, lalu muat ulang halaman.</div>`);
   return false;
 }
 

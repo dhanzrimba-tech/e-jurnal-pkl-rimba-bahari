@@ -1,1 +1,2 @@
 v6.51 - Word generation faster: concurrent photo processing, one photo per journal, resized embedded images, smaller Word images and progress feedback.
+\nFAST FIX: defensive Supabase createClient guard + CDN fallback.\n
